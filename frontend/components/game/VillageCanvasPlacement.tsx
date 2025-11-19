@@ -204,7 +204,7 @@ export function VillageCanvasPlacement({
       canvas.removeEventListener('click', handleClick);
       canvas.removeEventListener('contextmenu', handleRightClick);
       window.removeEventListener('keydown', handleKeyDown);
-      if (previewRef.current) {
+      if (previewRef.current && app?.stage) {
         app.stage.removeChild(previewRef.current);
         previewRef.current = null;
       }

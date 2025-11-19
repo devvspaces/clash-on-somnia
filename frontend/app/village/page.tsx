@@ -7,6 +7,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { VillageCanvasPlacement } from '@/components/game/VillageCanvasPlacement';
 import { ResourceCollector } from '@/components/game/ResourceCollector';
 import { BuildingShop } from '@/components/game/BuildingShop';
+import { ArmyTraining } from '@/components/game/ArmyTraining';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Building2, Users, Swords, Info, Plus, Trash2 } from 'lucide-react';
@@ -22,6 +23,7 @@ export default function VillagePage() {
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
   const [isLoadingResources, setIsLoadingResources] = useState(false);
   const [showBuildingShop, setShowBuildingShop] = useState(false);
+  const [showArmyTraining, setShowArmyTraining] = useState(false);
   const [placementMode, setPlacementMode] = useState<{
     active: boolean;
     buildingType: BuildingType;
@@ -177,23 +179,27 @@ export default function VillagePage() {
       <Navbar />
 
       <div className="container mx-auto p-6">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">{village.name}</h1>
-            <p className="text-muted-foreground">Welcome back, Chief!</p>
-          </div>
-          <Button
-            onClick={() => setShowBuildingShop(true)}
-            variant="game"
-            size="lg"
-            disabled={placementMode?.active}
-          >
-            <Plus className="mr-2 h-5 w-5" />
-            Build
-          </Button>
-        </div>
+        {showArmyTraining ? (
+          <ArmyTraining onClose={() => setShowArmyTraining(false)} />
+        ) : (
+          <>
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold">{village.name}</h1>
+                <p className="text-muted-foreground">Welcome back, Chief!</p>
+              </div>
+              <Button
+                onClick={() => setShowBuildingShop(true)}
+                variant="game"
+                size="lg"
+                disabled={placementMode?.active}
+              >
+                <Plus className="mr-2 h-5 w-5" />
+                Build
+              </Button>
+            </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
+            <div className="grid gap-6 lg:grid-cols-3">
           {/* Left Column - Stats */}
           <div className="space-y-6">
             <Card>
@@ -286,11 +292,11 @@ export default function VillagePage() {
                   </CardHeader>
                   <CardContent>
                     <Button
-                      onClick={() => router.push('/army')}
+                      onClick={() => setShowArmyTraining(true)}
                       className="w-full"
                     >
                       <Users className="mr-2 h-4 w-4" />
-                      Go to Army Camp
+                      Open Army Camp
                     </Button>
                   </CardContent>
                 </Card>
@@ -349,6 +355,8 @@ export default function VillagePage() {
             </Card>
           </div>
         </div>
+          </>
+        )}
       </div>
 
       {/* Building Shop Modal */}
