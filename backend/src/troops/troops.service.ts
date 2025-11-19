@@ -218,9 +218,9 @@ export class TroopsService {
 
   /**
    * Background job to process completed trainings
-   * Runs every minute to check for completed troops
+   * Runs every 5 seconds to check for completed troops
    */
-  @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(CronExpression.EVERY_5_SECONDS)
   async processCompletedTrainings() {
     const now = new Date();
 
