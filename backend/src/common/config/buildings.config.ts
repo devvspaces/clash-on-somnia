@@ -29,6 +29,13 @@ export interface BuildingConfig {
   // Resource generation (for mines/collectors)
   generationRate?: number; // per hour
   capacity?: number; // max storage
+  // Defense properties (for defensive buildings)
+  defense?: {
+    damage: number; // damage per shot
+    range: number; // attack range in tiles
+    attackSpeed: number; // seconds between shots
+    targetType: 'ground' | 'air' | 'both'; // what can it target
+  };
 }
 
 export const BUILDING_CONFIGS: Record<BuildingType, BuildingConfig> = {
@@ -91,22 +98,34 @@ export const BUILDING_CONFIGS: Record<BuildingType, BuildingConfig> = {
   [BuildingType.CANNON]: {
     type: BuildingType.CANNON,
     name: 'Cannon',
-    description: 'Ground defense',
+    description: 'Ground defense with medium range and damage',
     category: 'defense',
     baseCost: { gold: 400, elixir: 0 },
     buildTime: 120,
     size: { width: 2, height: 2 },
     maxHealth: 500,
+    defense: {
+      damage: 40,
+      range: 7,
+      attackSpeed: 1.5,
+      targetType: 'ground',
+    },
   },
   [BuildingType.ARCHER_TOWER]: {
     type: BuildingType.ARCHER_TOWER,
     name: 'Archer Tower',
-    description: 'Ranged defense',
+    description: 'Long-range defense that targets both ground and air',
     category: 'defense',
     baseCost: { gold: 500, elixir: 0 },
     buildTime: 180,
     size: { width: 2, height: 2 },
     maxHealth: 450,
+    defense: {
+      damage: 25,
+      range: 10,
+      attackSpeed: 1.0,
+      targetType: 'both',
+    },
   },
   [BuildingType.WALL]: {
     type: BuildingType.WALL,

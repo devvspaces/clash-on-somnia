@@ -10,6 +10,7 @@ import { VillagesModule } from './villages/villages.module';
 import { ResourcesModule } from './resources/resources.module';
 import { BuildingsModule } from './buildings/buildings.module';
 import { TroopsModule } from './troops/troops.module';
+import { BattlesModule } from './battles/battles.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { TroopsModule } from './troops/troops.module';
     ResourcesModule,
     BuildingsModule,
     TroopsModule,
+    BattlesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
