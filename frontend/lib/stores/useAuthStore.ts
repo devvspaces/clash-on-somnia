@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { authApi, type User } from '../api';
+import { useVillageStore } from './useVillageStore';
 
 interface AuthState {
   user: User | null;
@@ -77,6 +78,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       isAuthenticated: false,
       error: null,
     });
+    // Clear village store on logout
+    useVillageStore.getState().reset();
   },
 
   loadUser: async () => {

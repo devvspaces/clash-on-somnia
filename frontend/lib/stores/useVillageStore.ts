@@ -11,6 +11,7 @@ interface VillageState {
   removeBuilding: (buildingId: string) => void;
   updateBuilding: (buildingId: string, updates: Partial<Building>) => void;
   clearError: () => void;
+  reset: () => void;
 }
 
 export const useVillageStore = create<VillageState>((set, get) => ({
@@ -84,4 +85,6 @@ export const useVillageStore = create<VillageState>((set, get) => ({
   },
 
   clearError: () => set({ error: null }),
+
+  reset: () => set({ village: null, isLoading: false, error: null }),
 }));
