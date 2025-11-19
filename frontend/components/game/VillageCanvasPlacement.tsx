@@ -80,7 +80,9 @@ export function VillageCanvasPlacement({
     // Remove old building containers
     buildingContainersRef.current.forEach((container, id) => {
       if (!buildings.find((b) => b.id === id)) {
-        app.stage.removeChild(container);
+        if (container && container.parent) {
+          app.stage.removeChild(container);
+        }
         buildingContainersRef.current.delete(id);
       }
     });
@@ -103,13 +105,29 @@ export function VillageCanvasPlacement({
         app.stage.addChild(container);
       } else {
         // Update existing building position if changed
-        const visualConfig = getBuildingVisual(building.type);
-        const newX = building.positionX * TILE_SIZE;
-        const newY = building.positionY * TILE_SIZE;
+        // Check if container is still valid (not destroyed)
+        if (!container.transform) {
+          // Container was destroyed, remove from map and recreate
+          buildingContainersRef.current.delete(building.id);
+          container = createBuildingContainer(
+            building,
+            onBuildingClick,
+            onBuildingMove,
+            draggedBuildingRef,
+            selectedBuildingRef,
+            () => buildings,
+          );
+          buildingContainersRef.current.set(building.id, container);
+          app.stage.addChild(container);
+        } else {
+          const visualConfig = getBuildingVisual(building.type);
+          const newX = building.positionX * TILE_SIZE;
+          const newY = building.positionY * TILE_SIZE;
 
-        if (container.x !== newX || container.y !== newY) {
-          container.x = newX;
-          container.y = newY;
+          if (container.x !== newX || container.y !== newY) {
+            container.x = newX;
+            container.y = newY;
+          }
         }
       }
     });
