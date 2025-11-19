@@ -34,9 +34,34 @@ export interface Village {
   buildings: Building[];
 }
 
+export interface ResourcesWithPending extends Resources {
+  pending: {
+    gold: number;
+    elixir: number;
+  };
+  capacity: {
+    gold: number;
+    elixir: number;
+  };
+}
+
 export const villagesApi = {
   getMyVillage: async (): Promise<Village> => {
     const response = await apiClient.get<Village>('/villages/me');
+    return response.data;
+  },
+};
+
+export const resourcesApi = {
+  getMyResources: async (): Promise<ResourcesWithPending> => {
+    const response = await apiClient.get<ResourcesWithPending>('/resources/me');
+    return response.data;
+  },
+
+  collectResources: async (): Promise<{ message: string; resources: Resources }> => {
+    const response = await apiClient.post<{ message: string; resources: Resources }>(
+      '/resources/collect',
+    );
     return response.data;
   },
 };

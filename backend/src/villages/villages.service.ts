@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { DATABASE_CONNECTION } from '../database/database.module';
 import { villages, resources, buildings, Village, NewVillage } from '../database/schema';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import { BuildingType, getBuildingConfig } from '../common/config/buildings.config';
 
 @Injectable()
 export class VillagesService {
@@ -25,21 +26,68 @@ export class VillagesService {
     // Create initial resources
     await this.db.insert(resources).values({
       villageId: village.id,
-      gold: 500,
-      elixir: 500,
+      gold: 1000,
+      elixir: 1000,
     });
 
-    // Create initial buildings (Town Hall at center)
-    await this.db.insert(buildings).values({
-      villageId: village.id,
-      type: 'town_hall',
-      level: 1,
-      positionX: 20,
-      positionY: 20,
-      health: 1000,
-      maxHealth: 1000,
-      isActive: true,
-    });
+    // Create initial buildings
+    const initialBuildings = [
+      // Town Hall at center
+      {
+        villageId: village.id,
+        type: BuildingType.TOWN_HALL,
+        level: 1,
+        positionX: 18,
+        positionY: 18,
+        health: getBuildingConfig(BuildingType.TOWN_HALL).maxHealth,
+        maxHealth: getBuildingConfig(BuildingType.TOWN_HALL).maxHealth,
+        isActive: true,
+      },
+      // 2 Gold Mines
+      {
+        villageId: village.id,
+        type: BuildingType.GOLD_MINE,
+        level: 1,
+        positionX: 10,
+        positionY: 15,
+        health: getBuildingConfig(BuildingType.GOLD_MINE).maxHealth,
+        maxHealth: getBuildingConfig(BuildingType.GOLD_MINE).maxHealth,
+        isActive: true,
+      },
+      {
+        villageId: village.id,
+        type: BuildingType.GOLD_MINE,
+        level: 1,
+        positionX: 10,
+        positionY: 22,
+        health: getBuildingConfig(BuildingType.GOLD_MINE).maxHealth,
+        maxHealth: getBuildingConfig(BuildingType.GOLD_MINE).maxHealth,
+        isActive: true,
+      },
+      // 2 Elixir Collectors
+      {
+        villageId: village.id,
+        type: BuildingType.ELIXIR_COLLECTOR,
+        level: 1,
+        positionX: 28,
+        positionY: 15,
+        health: getBuildingConfig(BuildingType.ELIXIR_COLLECTOR).maxHealth,
+        maxHealth: getBuildingConfig(BuildingType.ELIXIR_COLLECTOR).maxHealth,
+        isActive: true,
+      },
+      {
+        villageId: village.id,
+        type: BuildingType.ELIXIR_COLLECTOR,
+        level: 1,
+        positionX: 28,
+        positionY: 22,
+        health: getBuildingConfig(BuildingType.ELIXIR_COLLECTOR).maxHealth,
+        maxHealth: getBuildingConfig(BuildingType.ELIXIR_COLLECTOR).maxHealth,
+        isActive: true,
+      },
+    ];
+
+    await this.db.insert(buildings).values(initialBuildings);
 
     return village;
   }
