@@ -285,8 +285,13 @@ export default function VillagePage() {
                     <CardDescription>Train and manage troops</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-2xl font-bold">0</p>
-                    <p className="text-sm text-muted-foreground">Coming in Phase 4</p>
+                    <Button
+                      onClick={() => router.push('/army')}
+                      className="w-full"
+                    >
+                      <Users className="mr-2 h-4 w-4" />
+                      Go to Army Camp
+                    </Button>
                   </CardContent>
                 </Card>
 
