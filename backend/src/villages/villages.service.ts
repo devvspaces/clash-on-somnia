@@ -24,10 +24,13 @@ export class VillagesService {
       .returning();
 
     // Create initial resources
+    // Set lastCollectedAt to 1 hour ago so users immediately have resources to collect
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     await this.db.insert(resources).values({
       villageId: village.id,
       gold: 1000,
       elixir: 1000,
+      lastCollectedAt: oneHourAgo,
     });
 
     // Create initial buildings

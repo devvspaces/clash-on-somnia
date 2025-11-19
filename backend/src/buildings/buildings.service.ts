@@ -1,7 +1,7 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { eq, and } from 'drizzle-orm';
 import { DATABASE_CONNECTION } from '../database/database.module';
-import { villages, buildings } from '../database/schema';
+import { villages, buildings, resources } from '../database/schema';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { BuildingType, getBuildingConfig } from '../common/config/buildings.config';
 
@@ -80,6 +80,13 @@ export class BuildingsService {
 
     if (newBuildings.length > 0) {
       await this.db.insert(buildings).values(newBuildings);
+
+      // Also set lastCollectedAt to 1 hour ago so users immediately have resources to collect
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      await this.db
+        .update(resources)
+        .set({ lastCollectedAt: oneHourAgo })
+        .where(eq(resources.villageId, villageId));
     }
 
     return newBuildings.length;
