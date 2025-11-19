@@ -8,9 +8,11 @@ import { VillageCanvasPlacement } from '@/components/game/VillageCanvasPlacement
 import { ResourceCollector } from '@/components/game/ResourceCollector';
 import { BuildingShop } from '@/components/game/BuildingShop';
 import { ArmyTraining } from '@/components/game/ArmyTraining';
+import { BattlePreparation } from '@/components/game/BattlePreparation';
+import { BattleResult } from '@/components/game/BattleResult';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Building2, Users, Swords, Info, Plus, Trash2 } from 'lucide-react';
+import { Building2, Users, Swords, Info, Plus, Trash2, History } from 'lucide-react';
 import { resourcesApi, buildingsApi, Building, ResourcesWithPending } from '@/lib/api';
 import { getBuildingVisual } from '@/lib/config/buildings';
 import { BuildingType } from '@/lib/config/buildingsData';
@@ -24,6 +26,8 @@ export default function VillagePage() {
   const [isLoadingResources, setIsLoadingResources] = useState(false);
   const [showBuildingShop, setShowBuildingShop] = useState(false);
   const [showArmyTraining, setShowArmyTraining] = useState(false);
+  const [showBattlePrep, setShowBattlePrep] = useState(false);
+  const [battleResult, setBattleResult] = useState<any>(null);
   const [placementMode, setPlacementMode] = useState<{
     active: boolean;
     buildingType: BuildingType;
@@ -149,6 +153,17 @@ export default function VillagePage() {
     }
   };
 
+  const handleBattleComplete = (result: any) => {
+    setShowBattlePrep(false);
+    setBattleResult(result);
+    // Refresh resources to show looted resources
+    loadResources();
+  };
+
+  const handleCloseBattleResult = () => {
+    setBattleResult(null);
+  };
+
   if (authLoading || villageLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -181,6 +196,13 @@ export default function VillagePage() {
       <div className="container mx-auto p-6">
         {showArmyTraining ? (
           <ArmyTraining onClose={() => setShowArmyTraining(false)} />
+        ) : battleResult ? (
+          <BattleResult result={battleResult} onClose={handleCloseBattleResult} />
+        ) : showBattlePrep ? (
+          <BattlePreparation
+            onBattleComplete={handleBattleComplete}
+            onCancel={() => setShowBattlePrep(false)}
+          />
         ) : (
           <>
             <div className="mb-6 flex items-center justify-between">
@@ -309,9 +331,23 @@ export default function VillagePage() {
                     </CardTitle>
                     <CardDescription>Attack other villages</CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <p className="text-2xl font-bold">0</p>
-                    <p className="text-sm text-muted-foreground">Coming in Phase 5</p>
+                  <CardContent className="space-y-2">
+                    <Button
+                      onClick={() => setShowBattlePrep(true)}
+                      className="w-full"
+                      variant="destructive"
+                    >
+                      <Swords className="mr-2 h-4 w-4" />
+                      Attack!
+                    </Button>
+                    <Button
+                      onClick={() => router.push('/battles')}
+                      className="w-full"
+                      variant="outline"
+                    >
+                      <History className="mr-2 h-4 w-4" />
+                      Battle History
+                    </Button>
                   </CardContent>
                 </Card>
               </>
@@ -347,8 +383,8 @@ export default function VillagePage() {
                 />
                 {!placementMode?.active && (
                   <div className="mt-4 text-center text-sm text-muted-foreground">
-                    <p>Phase 3 Complete! 🎉 You can now build and place buildings in your village.</p>
-                    <p className="mt-1">Next: Phase 4 - Army & Troop System</p>
+                    <p>Phase 5 Complete! 🎉 Combat system is live! Attack other villages and loot resources.</p>
+                    <p className="mt-1">Next: Phase 6 - Real-time PvP & Polish</p>
                   </div>
                 )}
               </CardContent>

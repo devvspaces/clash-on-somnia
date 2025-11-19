@@ -1,0 +1,70 @@
+import { apiClient } from './client';
+
+export interface BattleResult {
+  id: string;
+  destructionPercentage: number;
+  stars: number;
+  lootGold: number;
+  lootElixir: number;
+  createdAt: string;
+}
+
+export interface BattleDetails extends BattleResult {
+  attackerId: string;
+  defenderId: string;
+  attackerTroops: { type: string; count: number }[];
+  battleLog: BattleEvent[];
+}
+
+export interface BattleEvent {
+  timestamp: number;
+  type: 'TROOP_SPAWN' | 'TROOP_MOVE' | 'TROOP_ATTACK' | 'TROOP_DEATH' | 'BUILDING_ATTACK' | 'BUILDING_DESTROYED';
+  data: any;
+}
+
+export interface OpponentVillage {
+  opponentVillageId: string;
+  message: string;
+}
+
+export const battlesApi = {
+  /**
+   * Find a random opponent to attack
+   */
+  findOpponent: async (): Promise<OpponentVillage> => {
+    const response = await apiClient.get('/battles/find-opponent');
+    return response.data;
+  },
+
+  /**
+   * Execute an attack against an opponent
+   */
+  attack: async (
+    defenderId: string,
+    troops: { type: string; count: number }[],
+  ): Promise<{ message: string; battle: BattleResult }> => {
+    const response = await apiClient.post('/battles/attack', {
+      defenderId,
+      troops,
+    });
+    return response.data;
+  },
+
+  /**
+   * Get battle details by ID
+   */
+  getBattle: async (battleId: string): Promise<{ battle: BattleDetails }> => {
+    const response = await apiClient.get(`/battles/${battleId}`);
+    return response.data;
+  },
+
+  /**
+   * Get battle history
+   */
+  getHistory: async (limit: number = 20): Promise<{ battles: BattleResult[] }> => {
+    const response = await apiClient.get('/battles', {
+      params: { limit },
+    });
+    return response.data;
+  },
+};
