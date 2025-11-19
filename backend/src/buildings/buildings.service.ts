@@ -1,9 +1,9 @@
-import { Injectable, Inject } from '@nestjs/common';
-import { eq, and } from 'drizzle-orm';
+import { Injectable, Inject, BadRequestException, NotFoundException } from '@nestjs/common';
+import { eq, and, or, not } from 'drizzle-orm';
 import { DATABASE_CONNECTION } from '../database/database.module';
-import { villages, buildings, resources } from '../database/schema';
+import { villages, buildings, resources, Building } from '../database/schema';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import { BuildingType, getBuildingConfig } from '../common/config/buildings.config';
+import { BuildingType, getBuildingConfig, canAffordBuilding } from '../common/config/buildings.config';
 
 @Injectable()
 export class BuildingsService {
@@ -103,5 +103,186 @@ export class BuildingsService {
     }
 
     return { villageCount: allVillages.length, buildingsAdded: totalAdded };
+  }
+
+  async placeBuilding(
+    villageId: string,
+    buildingType: string,
+    positionX: number,
+    positionY: number,
+  ): Promise<Building> {
+    // Get building config
+    const config = getBuildingConfig(buildingType as BuildingType);
+    if (!config) {
+      throw new BadRequestException('Invalid building type');
+    }
+
+    // Get current resources
+    const [villageResources] = await this.db
+      .select()
+      .from(resources)
+      .where(eq(resources.villageId, villageId))
+      .limit(1);
+
+    if (!villageResources) {
+      throw new NotFoundException('Village resources not found');
+    }
+
+    // Check if user can afford the building
+    if (!canAffordBuilding(buildingType as BuildingType, villageResources.gold, villageResources.elixir)) {
+      throw new BadRequestException('Insufficient resources');
+    }
+
+    // Validate placement (check collision)
+    const isValid = await this.validatePlacement(
+      villageId,
+      positionX,
+      positionY,
+      config.size.width,
+      config.size.height,
+      null,
+    );
+
+    if (!isValid) {
+      throw new BadRequestException('Invalid placement - collision or out of bounds');
+    }
+
+    // Deduct resources
+    await this.db
+      .update(resources)
+      .set({
+        gold: villageResources.gold - config.baseCost.gold,
+        elixir: villageResources.elixir - config.baseCost.elixir,
+        updatedAt: new Date(),
+      })
+      .where(eq(resources.villageId, villageId));
+
+    // Create the building
+    const [newBuilding] = await this.db
+      .insert(buildings)
+      .values({
+        villageId,
+        type: buildingType,
+        level: 1,
+        positionX,
+        positionY,
+        health: config.maxHealth,
+        maxHealth: config.maxHealth,
+        isActive: true,
+      })
+      .returning();
+
+    return newBuilding;
+  }
+
+  async moveBuilding(buildingId: string, positionX: number, positionY: number): Promise<Building> {
+    // Get the building
+    const [building] = await this.db
+      .select()
+      .from(buildings)
+      .where(eq(buildings.id, buildingId))
+      .limit(1);
+
+    if (!building) {
+      throw new NotFoundException('Building not found');
+    }
+
+    // Get building config to check size
+    const config = getBuildingConfig(building.type as BuildingType);
+
+    // Validate new placement (excluding the current building)
+    const isValid = await this.validatePlacement(
+      building.villageId,
+      positionX,
+      positionY,
+      config.size.width,
+      config.size.height,
+      buildingId,
+    );
+
+    if (!isValid) {
+      throw new BadRequestException('Invalid placement - collision or out of bounds');
+    }
+
+    // Update building position
+    const [updatedBuilding] = await this.db
+      .update(buildings)
+      .set({
+        positionX,
+        positionY,
+        updatedAt: new Date(),
+      })
+      .where(eq(buildings.id, buildingId))
+      .returning();
+
+    return updatedBuilding;
+  }
+
+  async validatePlacement(
+    villageId: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    excludeBuildingId: string | null,
+  ): Promise<boolean> {
+    // Check grid bounds (40x40 grid)
+    if (x < 0 || y < 0 || x + width > 40 || y + height > 40) {
+      return false;
+    }
+
+    // Get all buildings in the village (excluding the one being moved if applicable)
+    const allBuildings = await this.db
+      .select()
+      .from(buildings)
+      .where(
+        excludeBuildingId
+          ? and(eq(buildings.villageId, villageId), not(eq(buildings.id, excludeBuildingId)))
+          : eq(buildings.villageId, villageId),
+      );
+
+    // Check collision with existing buildings
+    for (const existing of allBuildings) {
+      const existingConfig = getBuildingConfig(existing.type as BuildingType);
+
+      // Check if rectangles overlap
+      const newLeft = x;
+      const newRight = x + width;
+      const newTop = y;
+      const newBottom = y + height;
+
+      const existingLeft = existing.positionX;
+      const existingRight = existing.positionX + existingConfig.size.width;
+      const existingTop = existing.positionY;
+      const existingBottom = existing.positionY + existingConfig.size.height;
+
+      // Rectangles overlap if all these conditions are true
+      if (newLeft < existingRight && newRight > existingLeft && newTop < existingBottom && newBottom > existingTop) {
+        return false; // Collision detected
+      }
+    }
+
+    return true; // No collision
+  }
+
+  async deleteBuilding(buildingId: string, villageId: string): Promise<void> {
+    // Verify building belongs to village
+    const [building] = await this.db
+      .select()
+      .from(buildings)
+      .where(and(eq(buildings.id, buildingId), eq(buildings.villageId, villageId)))
+      .limit(1);
+
+    if (!building) {
+      throw new NotFoundException('Building not found');
+    }
+
+    // Don't allow deleting Town Hall
+    if (building.type === BuildingType.TOWN_HALL) {
+      throw new BadRequestException('Cannot delete Town Hall');
+    }
+
+    // Delete the building
+    await this.db.delete(buildings).where(eq(buildings.id, buildingId));
   }
 }

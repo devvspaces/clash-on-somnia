@@ -1,8 +1,9 @@
-import { Controller, Post, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, Put, Delete, UseGuards, Req, Body, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { BuildingsService } from './buildings.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { VillagesService } from '../villages/villages.service';
+import { PlaceBuildingDto, MoveBuildingDto } from './dto/building.dto';
 
 @ApiTags('buildings')
 @Controller('buildings')
@@ -30,6 +31,65 @@ export class BuildingsController {
     return {
       message: `Added ${buildingsAdded} starter buildings to your village`,
       buildingsAdded,
+    };
+  }
+
+  @Post('place')
+  @ApiOperation({ summary: 'Place a new building in the village' })
+  @ApiResponse({ status: 201, description: 'Building placed successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid placement or insufficient resources' })
+  async placeBuilding(@Req() req, @Body() placeBuildingDto: PlaceBuildingDto) {
+    const village = await this.villagesService.findByUserId(req.user.userId);
+    if (!village) {
+      return { message: 'Village not found' };
+    }
+
+    const building = await this.buildingsService.placeBuilding(
+      village.id,
+      placeBuildingDto.type,
+      placeBuildingDto.positionX,
+      placeBuildingDto.positionY,
+    );
+
+    return {
+      message: 'Building placed successfully',
+      building,
+    };
+  }
+
+  @Put(':id/move')
+  @ApiOperation({ summary: 'Move an existing building to a new position' })
+  @ApiResponse({ status: 200, description: 'Building moved successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid placement' })
+  @ApiResponse({ status: 404, description: 'Building not found' })
+  async moveBuilding(@Param('id') id: string, @Body() moveBuildingDto: MoveBuildingDto) {
+    const building = await this.buildingsService.moveBuilding(
+      id,
+      moveBuildingDto.positionX,
+      moveBuildingDto.positionY,
+    );
+
+    return {
+      message: 'Building moved successfully',
+      building,
+    };
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a building from the village' })
+  @ApiResponse({ status: 200, description: 'Building deleted successfully' })
+  @ApiResponse({ status: 400, description: 'Cannot delete Town Hall' })
+  @ApiResponse({ status: 404, description: 'Building not found' })
+  async deleteBuilding(@Req() req, @Param('id') id: string) {
+    const village = await this.villagesService.findByUserId(req.user.userId);
+    if (!village) {
+      return { message: 'Village not found' };
+    }
+
+    await this.buildingsService.deleteBuilding(id, village.id);
+
+    return {
+      message: 'Building deleted successfully',
     };
   }
 }
