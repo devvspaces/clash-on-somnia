@@ -120,6 +120,16 @@ export default function VillagePage() {
     setPlacementMode(null);
   };
 
+  const handleMoveBuilding = async (buildingId: string, x: number, y: number) => {
+    try {
+      await buildingsApi.moveBuilding(buildingId, { positionX: x, positionY: y });
+      await fetchVillage(); // Refresh village to get updated positions
+    } catch (error: any) {
+      console.error('Failed to move building:', error);
+      alert(error.response?.data?.message || 'Failed to move building');
+    }
+  };
+
   const handleDeleteBuilding = async () => {
     if (!selectedBuilding) return;
 
@@ -312,6 +322,7 @@ export default function VillagePage() {
                 <VillageCanvasPlacement
                   buildings={village.buildings}
                   onBuildingClick={handleBuildingClick}
+                  onBuildingMove={handleMoveBuilding}
                   placementMode={
                     placementMode
                       ? {
