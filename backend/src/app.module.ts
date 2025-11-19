@@ -9,6 +9,7 @@ import { UsersModule } from './users/users.module';
 import { VillagesModule } from './villages/villages.module';
 import { ResourcesModule } from './resources/resources.module';
 import { BuildingsModule } from './buildings/buildings.module';
+import { TroopsModule } from './troops/troops.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { BuildingsModule } from './buildings/buildings.module';
     VillagesModule,
     ResourcesModule,
     BuildingsModule,
+    TroopsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
