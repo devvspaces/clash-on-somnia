@@ -177,27 +177,36 @@ export function VillageCanvasPlacement({
   }, [buildings, onBuildingMove, selectedWalls]);
 
   const handleBuildingClick = (clickedBuilding: Building, isShiftClick: boolean) => {
+    console.log('[Wall Select] Clicked building:', clickedBuilding.type, 'isShift:', isShiftClick, 'currentSelection:', selectedWalls.size);
+
     if (clickedBuilding.type === 'wall' && isShiftClick) {
       // Shift+click on wall - range selection
       if (selectedWalls.size === 0) {
         // First wall selected
+        console.log('[Wall Select] First wall selected via shift-click');
         setSelectedWalls(new Set([clickedBuilding.id]));
       } else {
         // Select range between first selected and clicked wall
         const firstWallId = Array.from(selectedWalls)[0];
         const firstWall = buildings.find(b => b.id === firstWallId);
+        console.log('[Wall Select] Range selection - first wall:', firstWall?.positionX, firstWall?.positionY, 'clicked:', clickedBuilding.positionX, clickedBuilding.positionY);
         if (firstWall) {
           const rangeWalls = getWallRange(firstWall, clickedBuilding, buildings);
+          console.log('[Wall Select] Range result:', rangeWalls?.length, 'walls');
           if (rangeWalls) {
             setSelectedWalls(new Set(rangeWalls.map(w => w.id)));
+          } else {
+            console.log('[Wall Select] No valid range found (walls not in continuous line)');
           }
         }
       }
     } else if (clickedBuilding.type === 'wall' && !isShiftClick) {
       // Regular click on wall - single select
+      console.log('[Wall Select] Single wall selected');
       setSelectedWalls(new Set([clickedBuilding.id]));
     } else {
       // Not a wall or not shift-click - clear selection and call original handler
+      console.log('[Wall Select] Non-wall clicked, clearing selection');
       setSelectedWalls(new Set());
       if (onBuildingClick) {
         onBuildingClick(clickedBuilding);
@@ -260,6 +269,7 @@ export function VillageCanvasPlacement({
     // Calculate suggested position for walls based on last 2 placements
     if (placementMode.buildingType === BuildingType.WALL && wallPlacementHistoryRef.current.length >= 1) {
       const history = wallPlacementHistoryRef.current;
+      console.log('[Wall Placement] Calculating suggested position, history length:', history.length);
       if (history.length === 1) {
         // Only one wall placed, suggest right or below
         const last = history[0];
@@ -271,6 +281,7 @@ export function VillageCanvasPlacement({
             suggestedPosition = null;
           }
         }
+        console.log('[Wall Placement] First wall, suggested:', suggestedPosition);
       } else {
         // Two or more walls placed, determine direction
         const last = history[history.length - 1];
@@ -283,6 +294,7 @@ export function VillageCanvasPlacement({
         if (!checkPlacementValid(suggestedPosition.x, suggestedPosition.y, 1, 1, buildings, null)) {
           suggestedPosition = null;
         }
+        console.log('[Wall Placement] Direction:', { dx, dy }, 'suggested:', suggestedPosition);
       }
     }
 
@@ -331,6 +343,7 @@ export function VillageCanvasPlacement({
         // For walls, add to placement history and don't cancel
         if (placementMode.buildingType === BuildingType.WALL) {
           wallPlacementHistoryRef.current.push({ x: gridX, y: gridY });
+          console.log('[Wall Placement] Added to history:', { x: gridX, y: gridY }, 'Total history:', wallPlacementHistoryRef.current.length);
           // Keep only last 10 placements for history
           if (wallPlacementHistoryRef.current.length > 10) {
             wallPlacementHistoryRef.current.shift();
