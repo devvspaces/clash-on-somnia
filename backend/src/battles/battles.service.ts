@@ -500,6 +500,10 @@ export class BattlesService {
   ) {
     console.log('Starting real-time battle:', { attackerId, attackerVillageId, defenderVillageId });
 
+    // Validate and deduct troops from attacker's army
+    await this.consumeTroops(attackerVillageId, maxTroops);
+    console.log('Troops consumed from army:', maxTroops);
+
     // Get defender's village to find defender user
     const defenderVillage = await this.db
       .select()
@@ -653,6 +657,49 @@ export class BattlesService {
         .where(eq(resources.villageId, battleRecord.attackerId));
 
       console.log(`Awarded ${lootGold} gold and ${lootElixir} elixir to attacker`);
+    }
+  }
+
+  /**
+   * Consume troops from army when starting a battle
+   */
+  private async consumeTroops(
+    villageId: string,
+    troops: { type: TroopType; count: number }[],
+  ): Promise<void> {
+    for (const troopGroup of troops) {
+      // Get current troop count
+      const [armyRecord] = await this.db
+        .select()
+        .from(army)
+        .where(
+          and(
+            eq(army.villageId, villageId),
+            eq(army.troopType, troopGroup.type),
+          ),
+        )
+        .limit(1);
+
+      if (!armyRecord) {
+        throw new Error(`Troop type ${troopGroup.type} not found in army`);
+      }
+
+      if (armyRecord.count < troopGroup.count) {
+        throw new Error(
+          `Insufficient troops: have ${armyRecord.count} ${troopGroup.type}, need ${troopGroup.count}`,
+        );
+      }
+
+      // Deduct troops
+      await this.db
+        .update(army)
+        .set({
+          count: sql`${army.count} - ${troopGroup.count}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(army.id, armyRecord.id));
+
+      console.log(`Deducted ${troopGroup.count} ${troopGroup.type} from village ${villageId}`);
     }
   }
 }

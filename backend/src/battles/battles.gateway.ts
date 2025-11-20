@@ -79,6 +79,27 @@ export class BattlesGateway implements OnGatewayConnection, OnGatewayDisconnect 
 
     console.log(`Client ${client.id} joining battle ${battleId} as village ${villageId}`);
 
+    // Check if battle session exists
+    const session = this.battleSessionManager.getSession(battleId);
+    if (!session) {
+      console.log(`Battle ${battleId} not found - battle may have ended`);
+      return {
+        success: false,
+        message: 'Battle not found or has ended',
+        error: 'BATTLE_ENDED'
+      };
+    }
+
+    // Check if battle is completed
+    if (session.status === 'completed') {
+      console.log(`Battle ${battleId} has already ended`);
+      return {
+        success: false,
+        message: 'Battle has already ended',
+        error: 'BATTLE_ENDED'
+      };
+    }
+
     // Join the socket.io room
     client.join(battleId);
 
@@ -89,10 +110,17 @@ export class BattlesGateway implements OnGatewayConnection, OnGatewayDisconnect 
     }
     this.battleRooms.get(battleId)!.add(client.id);
 
-    // Store villageId on socket for future use
+    // Store villageId and session info on socket for future use
     (client as any).villageId = villageId;
+    (client as any).isAttacker = session.attackerVillageId === villageId;
 
-    return { success: true, message: 'Joined battle room' };
+    console.log(`Client ${client.id} joined battle ${battleId} as ${(client as any).isAttacker ? 'attacker' : 'spectator'}`);
+
+    return {
+      success: true,
+      message: 'Joined battle room',
+      isAttacker: (client as any).isAttacker
+    };
   }
 
   /**
@@ -128,6 +156,8 @@ export class BattlesGateway implements OnGatewayConnection, OnGatewayDisconnect 
   ) {
     const { battleId, troopType, position } = payload;
     const user = (client as any).user;
+    const villageId = (client as any).villageId;
+    const isAttacker = (client as any).isAttacker;
 
     console.log(`User ${user?.username} deploying ${troopType} at (${position.x}, ${position.y}) in battle ${battleId}`);
 
@@ -137,7 +167,12 @@ export class BattlesGateway implements OnGatewayConnection, OnGatewayDisconnect 
       throw new WsException('Battle session not found');
     }
 
-    // Validate user is the attacker
+    // Enforce spectator-only mode - only attacker can deploy troops
+    if (!isAttacker || session.attackerVillageId !== villageId) {
+      throw new WsException('Only the attacker can deploy troops. You are spectating this battle.');
+    }
+
+    // Double-check user ID matches
     if (session.attackerId !== user?.userId) {
       throw new WsException('Only the attacker can deploy troops');
     }

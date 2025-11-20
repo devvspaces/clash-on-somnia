@@ -417,13 +417,29 @@ export default function BattlePage() {
 
       // Join battle room after connection is established
       joinBattle(battleSession.battleId, villageId)
-        .then(() => {
-          console.log('Successfully joined battle room');
-          setBattleStatus('Ready! Click on the map to deploy troops!');
+        .then((response) => {
+          console.log('Successfully joined battle room:', response);
+
+          // Check if user is just a spectator
+          if (response.isAttacker === false) {
+            setBattleStatus('Spectating battle - you cannot deploy troops');
+            setIsConnected(true);
+          } else {
+            setBattleStatus('Ready! Click on the map to deploy troops!');
+          }
         })
         .catch((error) => {
           console.error('Failed to join battle:', error);
-          setBattleStatus('Failed to join battle - please refresh');
+
+          // Check if battle has ended
+          if (error.message && (error.message.includes('ended') || error.message.includes('not found'))) {
+            setBattleStatus('This battle has ended. Redirecting...');
+            setTimeout(() => {
+              router.push('/village');
+            }, 2000);
+          } else {
+            setBattleStatus('Failed to join battle - please refresh');
+          }
         });
     });
 
