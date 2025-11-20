@@ -36,10 +36,14 @@ export class AuthService {
     });
 
     // Create initial village for the user
-    await this.villagesService.createInitialVillage(user.id, `${user.username}'s Village`);
+    const village = await this.villagesService.createInitialVillage(user.id, `${user.username}'s Village`);
 
-    // Generate JWT token
-    const payload: JwtPayload = { sub: user.id, username: user.username };
+    // Generate JWT token with villageId
+    const payload: JwtPayload = {
+      sub: user.id,
+      username: user.username,
+      villageId: village.id,
+    };
     const accessToken = this.jwtService.sign(payload);
 
     return {
@@ -70,8 +74,15 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Generate JWT token
-    const payload: JwtPayload = { sub: user.id, username: user.username };
+    // Get user's village
+    const village = await this.villagesService.findByUserId(user.id);
+
+    // Generate JWT token with villageId
+    const payload: JwtPayload = {
+      sub: user.id,
+      username: user.username,
+      villageId: village?.id,
+    };
     const accessToken = this.jwtService.sign(payload);
 
     return {
