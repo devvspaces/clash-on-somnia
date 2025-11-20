@@ -84,15 +84,15 @@ export function BattleDeployment({
     if (!canvasRef.current || appRef.current) return;
 
     const initPixi = async () => {
-      const app = new Application();
-      await app.init({
+      // Pixi.js v7 syntax - pass options to constructor
+      const app = new Application({
         width: CANVAS_WIDTH,
         height: CANVAS_HEIGHT,
         backgroundColor: 0x2d5016, // Grass green
         antialias: true,
       });
 
-      canvasRef.current?.appendChild(app.canvas as HTMLCanvasElement);
+      canvasRef.current?.appendChild(app.view as HTMLCanvasElement);
       appRef.current = app;
 
       // Create layers
