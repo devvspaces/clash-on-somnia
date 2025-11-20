@@ -144,7 +144,6 @@ export default function BattlePage() {
       // Add click handler for troop deployment
       app.stage.eventMode = 'static';
       app.stage.hitArea = app.screen;
-      app.stage.on('pointerdown', handleCanvasClick);
     };
 
     initPixi();
@@ -156,6 +155,22 @@ export default function BattlePage() {
       }
     };
   }, [battleSession]);
+
+  // Update click handler when selectedTroopType changes
+  useEffect(() => {
+    if (!appRef.current?.stage) return;
+
+    // Remove old listener
+    appRef.current.stage.off('pointerdown', handleCanvasClick);
+    // Add new listener with updated closure
+    appRef.current.stage.on('pointerdown', handleCanvasClick);
+
+    return () => {
+      if (appRef.current?.stage) {
+        appRef.current.stage.off('pointerdown', handleCanvasClick);
+      }
+    };
+  }, [handleCanvasClick]);
 
   // Draw grid
   const drawGrid = (stage: Container) => {

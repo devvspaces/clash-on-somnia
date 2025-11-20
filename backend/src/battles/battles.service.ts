@@ -63,7 +63,10 @@ export class BattlesService {
     @Inject(DATABASE_CONNECTION)
     private db: NodePgDatabase<typeof schema>,
     private battleSessionManager: BattleSessionManager,
-  ) {}
+  ) {
+    // Set this service on the session manager to allow it to update battle results
+    this.battleSessionManager.setBattlesService(this);
+  }
 
   /**
    * Simulate a battle between attacker's troops and defender's village
@@ -603,5 +606,53 @@ export class BattlesService {
     const randomIndex = Math.floor(Math.random() * opponents.length);
     console.log('findRandomOpponent - selected opponent:', opponents[randomIndex].id);
     return opponents[randomIndex].id;
+  }
+
+  /**
+   * Update battle results when a real-time battle ends
+   */
+  async updateBattleResults(
+    battleId: string,
+    destructionPercentage: number,
+    stars: number,
+  ): Promise<void> {
+    console.log(`Updating battle ${battleId} results: ${destructionPercentage}% destruction, ${stars} stars`);
+
+    // Calculate loot based on destruction percentage
+    const battleRecord = await this.getBattleById(battleId);
+    if (!battleRecord) {
+      console.error(`Battle ${battleId} not found for update`);
+      return;
+    }
+
+    const { lootGold, lootElixir } = await this.calculateLoot(
+      battleRecord.defenderId,
+      destructionPercentage,
+    );
+
+    // Update battle record
+    await this.db
+      .update(battles)
+      .set({
+        destructionPercentage,
+        stars,
+        lootGold,
+        lootElixir,
+        status: 'completed',
+      })
+      .where(eq(battles.id, battleId));
+
+    // Give loot to attacker
+    if (lootGold > 0 || lootElixir > 0) {
+      await this.db
+        .update(resources)
+        .set({
+          gold: sql`${resources.gold} + ${lootGold}`,
+          elixir: sql`${resources.elixir} + ${lootElixir}`,
+        })
+        .where(eq(resources.villageId, battleRecord.attackerId));
+
+      console.log(`Awarded ${lootGold} gold and ${lootElixir} elixir to attacker`);
+    }
   }
 }
