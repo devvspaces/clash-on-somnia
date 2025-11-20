@@ -19,7 +19,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   token: null,
   isAuthenticated: false,
-  isLoading: false,
+  isLoading: true, // Start as true to prevent redirect during initial auth check
   error: null,
 
   login: async (identifier: string, password: string) => {
