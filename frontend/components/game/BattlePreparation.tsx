@@ -22,7 +22,6 @@ export function BattlePreparation({ onBattleComplete, onStartRealtimeBattle, onC
   const [selectedTroops, setSelectedTroops] = useState<{ type: string; count: number }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isAttacking, setIsAttacking] = useState(false);
-  const [battleMode, setBattleMode] = useState<'instant' | 'realtime'>('realtime'); // Default to Phase 6
 
   useEffect(() => {
     loadData();
@@ -100,14 +99,10 @@ export function BattlePreparation({ onBattleComplete, onStartRealtimeBattle, onC
       setIsAttacking(true);
       setError(null);
 
-      if (battleMode === 'realtime' && onStartRealtimeBattle) {
-        // Phase 6: Start real-time battle session
+      if (onStartRealtimeBattle) {
+        // Always use real-time battle
         const battleSession = await battlesApi.startBattle(opponent.opponentVillageId, selectedTroops);
         onStartRealtimeBattle(battleSession, selectedTroops);
-      } else {
-        // Phase 5: Instant simulation
-        const result = await battlesApi.attack(opponent.opponentVillageId, selectedTroops);
-        onBattleComplete(result.battle);
       }
     } catch (err: any) {
       console.error('Attack failed:', err);
@@ -262,40 +257,6 @@ export function BattlePreparation({ onBattleComplete, onStartRealtimeBattle, onC
         </CardContent>
       </Card>
 
-      {/* Battle Mode Selector */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Battle Mode</CardTitle>
-          <CardDescription>Choose how you want to attack</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <Button
-              variant={battleMode === 'realtime' ? 'default' : 'outline'}
-              className="h-auto py-4 flex flex-col gap-2"
-              onClick={() => setBattleMode('realtime')}
-            >
-              <Gamepad2 className="h-6 w-6" />
-              <div>
-                <p className="font-semibold">Real-Time Battle</p>
-                <p className="text-xs text-muted-foreground">Deploy troops and watch them fight</p>
-              </div>
-            </Button>
-            <Button
-              variant={battleMode === 'instant' ? 'default' : 'outline'}
-              className="h-auto py-4 flex flex-col gap-2"
-              onClick={() => setBattleMode('instant')}
-            >
-              <Swords className="h-6 w-6" />
-              <div>
-                <p className="font-semibold">Instant Simulation</p>
-                <p className="text-xs text-muted-foreground">Quick auto-battle simulation</p>
-              </div>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Attack Button */}
       <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
         <div>
@@ -303,7 +264,7 @@ export function BattlePreparation({ onBattleComplete, onStartRealtimeBattle, onC
           <p className="text-sm text-muted-foreground">
             {selectedTroops.length === 0
               ? 'Select troops to begin the attack'
-              : `${getTotalSelectedTroops()} troops selected for ${battleMode === 'realtime' ? 'real-time' : 'instant'} battle`}
+              : `${getTotalSelectedTroops()} troops selected for battle`}
           </p>
         </div>
         <Button
@@ -315,12 +276,12 @@ export function BattlePreparation({ onBattleComplete, onStartRealtimeBattle, onC
           {isAttacking ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {battleMode === 'realtime' ? 'Starting...' : 'Attacking...'}
+              Starting...
             </>
           ) : (
             <>
-              {battleMode === 'realtime' ? <Gamepad2 className="mr-2 h-4 w-4" /> : <Swords className="mr-2 h-4 w-4" />}
-              {battleMode === 'realtime' ? 'Start Battle' : 'Attack!'}
+              <Gamepad2 className="mr-2 h-4 w-4" />
+              Start Battle
             </>
           )}
         </Button>

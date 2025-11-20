@@ -50,6 +50,16 @@ export default function VillagePage() {
     }
   }, [isAuthenticated, village, villageLoading, fetchVillage]);
 
+  // Poll village data every 30 seconds to update collector internal storage
+  useEffect(() => {
+    if (isAuthenticated && village) {
+      const interval = setInterval(() => {
+        fetchVillage();
+      }, 30000); // 30 seconds
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated, village, fetchVillage]);
+
   // Fetch resources with pending amounts
   useEffect(() => {
     if (isAuthenticated && village) {
