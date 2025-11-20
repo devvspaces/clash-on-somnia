@@ -257,9 +257,9 @@ export class ResourcesService {
       .from(buildings)
       .where(eq(buildings.villageId, villageId));
 
-    // Base storage from Town Hall
-    let maxGold = 1000;
-    let maxElixir = 1000;
+    // Only count storage from actual storage buildings
+    let maxGold = 0;
+    let maxElixir = 0;
 
     // Add storage from Gold Storage buildings
     const goldStorages = villageBuildings.filter((b) => b.type === BuildingType.GOLD_STORAGE);

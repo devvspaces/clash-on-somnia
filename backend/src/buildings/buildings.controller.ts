@@ -34,6 +34,19 @@ export class BuildingsController {
     };
   }
 
+  @Post('fix-collector-capacities')
+  @ApiOperation({
+    summary: 'Fix collector internal storage capacities (migration helper)',
+  })
+  @ApiResponse({ status: 200, description: 'Collector capacities updated' })
+  async fixCollectorCapacities() {
+    const result = await this.buildingsService.fixCollectorCapacities();
+    return {
+      message: 'All collector buildings updated with correct capacities',
+      result,
+    };
+  }
+
   @Post('place')
   @ApiOperation({ summary: 'Place a new building in the village' })
   @ApiResponse({ status: 201, description: 'Building placed successfully' })

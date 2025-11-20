@@ -397,54 +397,33 @@ export default function VillagePage() {
             )}
 
             {!placementMode?.active && (
-              <>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="h-5 w-5" />
-                      Army
-                    </CardTitle>
-                    <CardDescription>Train and manage troops</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Button
-                      onClick={() => setShowArmyTraining(true)}
-                      className="w-full"
-                    >
-                      <Users className="mr-2 h-4 w-4" />
-                      Open Army Camp
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Swords className="h-5 w-5" />
-                      Battles
-                    </CardTitle>
-                    <CardDescription>Attack other villages</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <Button
-                      onClick={() => setShowBattlePrep(true)}
-                      className="w-full"
-                      variant="destructive"
-                    >
-                      <Swords className="mr-2 h-4 w-4" />
-                      Attack!
-                    </Button>
-                    <Button
-                      onClick={() => router.push('/battles')}
-                      className="w-full"
-                      variant="outline"
-                    >
-                      <History className="mr-2 h-4 w-4" />
-                      Battle History
-                    </Button>
-                  </CardContent>
-                </Card>
-              </>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Swords className="h-5 w-5" />
+                    Battles
+                  </CardTitle>
+                  <CardDescription>Attack other villages</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Button
+                    onClick={() => setShowBattlePrep(true)}
+                    className="w-full"
+                    variant="destructive"
+                  >
+                    <Swords className="mr-2 h-4 w-4" />
+                    Attack!
+                  </Button>
+                  <Button
+                    onClick={() => router.push('/battles')}
+                    className="w-full"
+                    variant="outline"
+                  >
+                    <History className="mr-2 h-4 w-4" />
+                    Battle History
+                  </Button>
+                </CardContent>
+              </Card>
             )}
           </div>
 
