@@ -156,22 +156,6 @@ export default function BattlePage() {
     };
   }, [battleSession]);
 
-  // Update click handler when selectedTroopType changes
-  useEffect(() => {
-    if (!appRef.current?.stage) return;
-
-    // Remove old listener
-    appRef.current.stage.off('pointerdown', handleCanvasClick);
-    // Add new listener with updated closure
-    appRef.current.stage.on('pointerdown', handleCanvasClick);
-
-    return () => {
-      if (appRef.current?.stage) {
-        appRef.current.stage.off('pointerdown', handleCanvasClick);
-      }
-    };
-  }, [handleCanvasClick]);
-
   // Draw grid
   const drawGrid = (stage: Container) => {
     const grid = new Graphics();
@@ -376,6 +360,22 @@ export default function BattlePage() {
     },
     [selectedTroopType, battleSession, troops, deployedCounts]
   );
+
+  // Update click handler when selectedTroopType changes
+  useEffect(() => {
+    if (!appRef.current?.stage) return;
+
+    // Remove old listener
+    appRef.current.stage.off('pointerdown', handleCanvasClick);
+    // Add new listener with updated closure
+    appRef.current.stage.on('pointerdown', handleCanvasClick);
+
+    return () => {
+      if (appRef.current?.stage) {
+        appRef.current.stage.off('pointerdown', handleCanvasClick);
+      }
+    };
+  }, [handleCanvasClick]);
 
   // Connect to WebSocket and join battle
   useEffect(() => {
