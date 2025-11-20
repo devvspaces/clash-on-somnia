@@ -266,6 +266,16 @@ export default function BattlePage() {
   };
 
   // Define battle event handlers
+  const handleBattleEndEvent = useCallback((result: any) => {
+    console.log('Battle ended:', result);
+    setBattleStatus(`Battle Over! ${result.stars} Stars - ${result.destructionPercentage}% Destruction`);
+    setDestructionPercentage(result.destructionPercentage);
+
+    setTimeout(() => {
+      router.push(`/village?battleResult=${encodeURIComponent(JSON.stringify(result))}`);
+    }, 3000);
+  }, [router]);
+
   const handleBattleEvent = useCallback((event: BattleEvent) => {
     console.log('📡 Battle event received:', event.type, event.data);
 
@@ -294,20 +304,14 @@ export default function BattlePage() {
         console.log('Handling BUILDING_DESTROYED');
         handleBuildingDestroyed(event.data);
         break;
+      case 'BATTLE_END':
+        console.log('Handling BATTLE_END');
+        handleBattleEndEvent(event.data);
+        break;
       default:
         console.log('Unknown event type:', event.type);
     }
-  }, []);
-
-  const handleBattleEndEvent = useCallback((result: any) => {
-    console.log('Battle ended:', result);
-    setBattleStatus(`Battle Over! ${result.stars} Stars - ${result.destructionPercentage}% Destruction`);
-    setDestructionPercentage(result.destructionPercentage);
-
-    setTimeout(() => {
-      router.push(`/village?battleResult=${encodeURIComponent(JSON.stringify(result))}`);
-    }, 3000);
-  }, [router]);
+  }, [handleBattleEndEvent]);
 
   // Handle canvas click for troop deployment
   const handleCanvasClick = useCallback(
@@ -531,8 +535,12 @@ export default function BattlePage() {
       buildingSprite.healthBar.endFill();
     }
 
+    // Show projectile for ranged attacks (archers) or melee effect for melee troops (barbarians)
     if (data.projectile) {
-      createProjectile(data.projectile.from, data.projectile.to);
+      createProjectile(data.projectile.from, data.projectile.to, data.troopType);
+    } else {
+      // Melee attack - show slash effect at building
+      createMeleeEffect(buildingSprite.position);
     }
   };
 
@@ -590,19 +598,38 @@ export default function BattlePage() {
     troopSpritesRef.current.delete(data.troopId);
   };
 
-  // Create projectile effect
-  const createProjectile = (from: { x: number; y: number }, to: { x: number; y: number }) => {
+  // Create projectile effect for ranged attacks
+  const createProjectile = (from: { x: number; y: number }, to: { x: number; y: number }, troopType?: string) => {
     if (!effectsLayerRef.current) return;
 
     const projectile = new Graphics();
-    projectile.beginFill(0xffff00);
-    projectile.drawCircle(0, 0, 2);
-    projectile.endFill();
 
-    projectile.position.set(from.x * TILE_SIZE, from.y * TILE_SIZE);
+    // Different projectiles for different troop types
+    if (troopType === 'ARCHER') {
+      // Arrow - thin line with arrowhead
+      projectile.lineStyle(2, 0x8b4513, 1); // brown arrow
+      projectile.moveTo(0, 0);
+      projectile.lineTo(8, 0);
+      // Arrowhead
+      projectile.lineTo(6, -2);
+      projectile.moveTo(8, 0);
+      projectile.lineTo(6, 2);
+
+      // Rotate arrow to face target
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      projectile.rotation = Math.atan2(dy, dx);
+    } else {
+      // Default projectile (yellow ball for defense buildings)
+      projectile.beginFill(0xffff00);
+      projectile.drawCircle(0, 0, 3);
+      projectile.endFill();
+    }
+
+    projectile.position.set(from.x * TILE_SIZE + TILE_SIZE / 2, from.y * TILE_SIZE + TILE_SIZE / 2);
     effectsLayerRef.current.addChild(projectile);
 
-    const duration = 200;
+    const duration = 300;
     const startTime = Date.now();
 
     const animate = () => {
@@ -610,14 +637,47 @@ export default function BattlePage() {
       const progress = Math.min(elapsed / duration, 1);
 
       projectile.position.set(
-        (from.x + (to.x - from.x) * progress) * TILE_SIZE,
-        (from.y + (to.y - from.y) * progress) * TILE_SIZE
+        (from.x + (to.x - from.x) * progress) * TILE_SIZE + TILE_SIZE / 2,
+        (from.y + (to.y - from.y) * progress) * TILE_SIZE + TILE_SIZE / 2
       );
 
       if (progress < 1) {
         requestAnimationFrame(animate);
       } else {
         projectile.destroy();
+      }
+    };
+
+    animate();
+  };
+
+  // Create melee attack effect
+  const createMeleeEffect = (position: { x: number; y: number }) => {
+    if (!effectsLayerRef.current) return;
+
+    const slash = new Graphics();
+
+    // Draw a slash effect (curved line)
+    slash.lineStyle(3, 0xff0000, 0.8);
+    slash.arc(0, 0, TILE_SIZE, -Math.PI / 4, Math.PI / 4);
+
+    slash.position.set(position.x * TILE_SIZE + TILE_SIZE, position.y * TILE_SIZE + TILE_SIZE);
+    effectsLayerRef.current.addChild(slash);
+
+    const duration = 200;
+    const startTime = Date.now();
+
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = elapsed / duration;
+
+      slash.alpha = 1 - progress;
+      slash.rotation = progress * Math.PI / 2; // Rotate as it fades
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        slash.destroy();
       }
     };
 

@@ -240,7 +240,7 @@ export class BattleSessionManager {
         } else {
           // Move towards target
           troop.state = 'moving';
-          this.moveTroopTowards(troop, this.getBuildingCenter(troop.target), deltaTime);
+          this.moveTroopTowards(troop, this.getBuildingCenter(troop.target), deltaTime, session);
         }
       }
     }
@@ -311,7 +311,7 @@ export class BattleSessionManager {
     return closest;
   }
 
-  private moveTroopTowards(troop: Troop, target: { x: number; y: number }, deltaTime: number) {
+  private moveTroopTowards(troop: Troop, target: { x: number; y: number }, deltaTime: number, session: BattleSession) {
     const dx = target.x - troop.position.x;
     const dy = target.y - troop.position.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
@@ -324,10 +324,9 @@ export class BattleSessionManager {
       troop.position.x += dx * ratio;
       troop.position.y += dy * ratio;
 
-      // Broadcast movement event (throttled)
-      if (Math.random() < 0.1) {
-        // 10% chance to broadcast each tick
-        this.broadcastEvent(troop, 'TROOP_MOVE', {
+      // Broadcast movement event (throttled to every 3rd tick for performance)
+      if (Math.random() < 0.33) {
+        this.broadcastEvent(session, 'TROOP_MOVE', {
           troopId: troop.id,
           from: oldPosition,
           to: troop.position,
@@ -352,11 +351,18 @@ export class BattleSessionManager {
       // Troop needs new target
       troop.target = null;
     } else {
+      // Emit attack event with projectile for ranged troops
+      const isRanged = troop.range > 1;
       this.broadcastEvent(session, 'BUILDING_ATTACK', {
         troopId: troop.id,
+        troopType: troop.type,
         buildingId: building.id,
         damage: troop.damage,
         remainingHealth: building.health,
+        projectile: isRanged ? {
+          from: troop.position,
+          to: this.getBuildingCenter(building),
+        } : undefined,
       });
     }
   }
