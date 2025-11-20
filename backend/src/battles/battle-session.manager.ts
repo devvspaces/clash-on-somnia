@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { BattlesGateway, BattleEvent } from './battles.gateway';
 
 export interface Troop {
@@ -56,9 +56,14 @@ export interface BattleSession {
 export class BattleSessionManager {
   private sessions: Map<string, BattleSession> = new Map();
   private gateway: BattlesGateway;
+  private battlesService: any; // Will be set later to avoid circular dependency
 
   setGateway(gateway: BattlesGateway) {
     this.gateway = gateway;
+  }
+
+  setBattlesService(service: any) {
+    this.battlesService = service;
   }
 
   createSession(
@@ -436,7 +441,7 @@ export class BattleSessionManager {
     return false;
   }
 
-  private endBattle(battleId: string) {
+  private async endBattle(battleId: string) {
     const session = this.sessions.get(battleId);
     if (!session) return;
 
@@ -456,6 +461,19 @@ export class BattleSessionManager {
     };
 
     console.log(`Battle ${battleId} ended:`, result);
+
+    // Update battle results in database
+    if (this.battlesService) {
+      try {
+        await this.battlesService.updateBattleResults(
+          battleId,
+          session.destructionPercentage,
+          stars,
+        );
+      } catch (error) {
+        console.error('Failed to update battle results:', error);
+      }
+    }
 
     this.broadcastEvent(session, 'BATTLE_END', result);
 
