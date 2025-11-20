@@ -516,11 +516,26 @@ export class BattlesService {
       .from(buildings)
       .where(eq(buildings.villageId, defenderVillageId));
 
+    console.log('Loaded defender buildings from DB:', defenderBuildings.map(b => ({
+      id: b.id,
+      type: b.type,
+      positionX: b.positionX,
+      positionY: b.positionY
+    })));
+
     // Attach building configs to buildings
     const buildingsWithConfigs = defenderBuildings.map((b) => ({
       ...b,
       config: getBuildingConfig(b.type as BuildingType),
     }));
+
+    console.log('Buildings with configs:', buildingsWithConfigs.map(b => ({
+      id: b.id,
+      type: b.type,
+      positionX: b.positionX,
+      positionY: b.positionY,
+      hasConfig: !!b.config
+    })));
 
     // Calculate total troop count
     const totalTroopCount = maxTroops.reduce((sum, t) => sum + t.count, 0);

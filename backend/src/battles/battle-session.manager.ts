@@ -145,26 +145,45 @@ export class BattleSessionManager {
   }
 
   private convertBuildings(buildings: any[]): Building[] {
-    return buildings.map((b) => ({
+    console.log('convertBuildings input:', buildings.map(b => ({
       id: b.id,
       type: b.type,
-      position: { x: b.positionX || b.x || 0, y: b.positionY || b.y || 0 }, // Handle both positionX/Y and x/y
-      width: b.width || b.config?.size?.width || 2,
-      height: b.height || b.config?.size?.height || 2,
-      health: b.config?.maxHealth || b.health || 1000,
-      maxHealth: b.config?.maxHealth || b.health || 1000,
-      isDestroyed: false,
-      isDefense: !!b.config?.defense,
-      defense: b.config?.defense
-        ? {
-            damage: b.config.defense.damage,
-            range: b.config.defense.range,
-            attackSpeed: b.config.defense.attackSpeed,
-            targetType: b.config.defense.targetType,
-            lastAttackTime: 0,
-          }
-        : undefined,
-    }));
+      positionX: b.positionX,
+      positionY: b.positionY,
+      x: b.x,
+      y: b.y
+    })));
+
+    const converted = buildings.map((b) => {
+      const building = {
+        id: b.id,
+        type: b.type,
+        position: { x: b.positionX || b.x || 0, y: b.positionY || b.y || 0 }, // Handle both positionX/Y and x/y
+        width: b.width || b.config?.size?.width || 2,
+        height: b.height || b.config?.size?.height || 2,
+        health: b.config?.maxHealth || b.health || 1000,
+        maxHealth: b.config?.maxHealth || b.health || 1000,
+        isDestroyed: false,
+        isDefense: !!b.config?.defense,
+        defense: b.config?.defense
+          ? {
+              damage: b.config.defense.damage,
+              range: b.config.defense.range,
+              attackSpeed: b.config.defense.attackSpeed,
+              targetType: b.config.defense.targetType,
+              lastAttackTime: 0,
+            }
+          : undefined,
+      };
+      console.log(`Converted building ${b.id}:`, {
+        type: building.type,
+        position: building.position,
+        health: building.health
+      });
+      return building;
+    });
+
+    return converted;
   }
 
   private startBattleLoop(battleId: string) {
