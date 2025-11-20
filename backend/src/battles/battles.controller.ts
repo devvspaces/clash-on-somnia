@@ -76,6 +76,13 @@ export class BattlesController {
   async findOpponent(@Request() req) {
     const villageId = req.user.villageId;
 
+    console.log('Find opponent - villageId:', villageId);
+    console.log('Find opponent - user:', req.user);
+
+    if (!villageId) {
+      throw new BadRequestException('Village ID not found in user session');
+    }
+
     const opponentId = await this.battlesService.findRandomOpponent(villageId);
 
     if (!opponentId) {
@@ -131,6 +138,13 @@ export class BattlesController {
   async getHistory(@Request() req, @Query('limit') limit?: string) {
     const villageId = req.user.villageId;
     const limitNum = limit ? parseInt(limit, 10) : 20;
+
+    console.log('getHistory - villageId:', villageId, 'limit:', limitNum);
+    console.log('getHistory - user:', req.user);
+
+    if (!villageId) {
+      throw new BadRequestException('Village ID not found in user session');
+    }
 
     const history = await this.battlesService.getBattleHistory(villageId, limitNum);
 

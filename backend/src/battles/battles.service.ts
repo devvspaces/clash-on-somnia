@@ -434,13 +434,15 @@ export class BattlesService {
       .returning();
 
     // Give loot to attacker (increment existing resources)
-    await this.db
-      .update(resources)
-      .set({
-        gold: sql`${resources.gold} + ${result.lootGold}`,
-        elixir: sql`${resources.elixir} + ${result.lootElixir}`,
-      })
-      .where(eq(resources.villageId, attackerId));
+    if (result.lootGold > 0 || result.lootElixir > 0) {
+      await this.db
+        .update(resources)
+        .set({
+          gold: sql`${resources.gold} + ${result.lootGold}`,
+          elixir: sql`${resources.elixir} + ${result.lootElixir}`,
+        })
+        .where(eq(resources.villageId, attackerId));
+    }
 
     return battle;
   }
@@ -449,16 +451,21 @@ export class BattlesService {
    * Get battle history for a village
    */
   async getBattleHistory(villageId: string, limit: number = 20): Promise<Battle[]> {
+    console.log('getBattleHistory - villageId:', villageId, 'limit:', limit);
+
+    if (!villageId) {
+      console.error('getBattleHistory - villageId is undefined!');
+      return [];
+    }
+
     const history = await this.db
       .select()
       .from(battles)
-      .where(
-        and(
-          eq(battles.attackerId, villageId),
-        ),
-      )
+      .where(eq(battles.attackerId, villageId))
       .orderBy(desc(battles.createdAt))
       .limit(limit);
+
+    console.log('getBattleHistory - found battles:', history.length);
 
     return history;
   }
@@ -480,16 +487,26 @@ export class BattlesService {
    * Find a random opponent village (for PvE)
    */
   async findRandomOpponent(attackerVillageId: string): Promise<string | null> {
+    console.log('findRandomOpponent - attackerVillageId:', attackerVillageId);
+
+    if (!attackerVillageId) {
+      console.error('findRandomOpponent - attackerVillageId is undefined!');
+      return null;
+    }
+
     // Get all villages except attacker's
     const opponents = await this.db
       .select()
       .from(villages)
       .where(ne(villages.id, attackerVillageId));
 
+    console.log('findRandomOpponent - found opponents:', opponents.length);
+
     if (opponents.length === 0) return null;
 
     // Return random opponent
     const randomIndex = Math.floor(Math.random() * opponents.length);
+    console.log('findRandomOpponent - selected opponent:', opponents[randomIndex].id);
     return opponents[randomIndex].id;
   }
 }
