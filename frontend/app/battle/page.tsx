@@ -20,7 +20,8 @@ import {
   offBattleEnd,
   BattleEvent,
 } from '@/lib/socket';
-import { Sword, Shield, Target, X, Home, ArrowLeft } from 'lucide-react';
+import { Sword, Shield, Target, X, Home, ArrowLeft, Clock } from 'lucide-react';
+import { BattleSummary } from '@/components/game/BattleSummary';
 
 // Troop rendering data
 interface TroopSprite {
@@ -72,6 +73,9 @@ export default function BattlePage() {
   const [battleStatus, setBattleStatus] = useState<string>('Connecting to battle server...');
   const [isLoading, setIsLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
+  const [battleEndResult, setBattleEndResult] = useState<any>(null);
+  const [timeRemaining, setTimeRemaining] = useState(180); // 3 minutes in seconds
+  const [battleStartTime, setBattleStartTime] = useState<number | null>(null);
 
   // Store sprites
   const buildingSpritesRef = useRef<Map<string, BuildingSprite>>(new Map());
@@ -264,16 +268,37 @@ export default function BattlePage() {
     return healthBar;
   };
 
+  // Battle countdown timer
+  useEffect(() => {
+    if (!battleStarted || battleEndResult) return;
+
+    if (!battleStartTime) {
+      setBattleStartTime(Date.now());
+    }
+
+    const timer = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - (battleStartTime || Date.now())) / 1000);
+      const remaining = Math.max(0, 180 - elapsed);
+      setTimeRemaining(remaining);
+
+      if (remaining === 0) {
+        // Time's up - battle should end (handled by backend)
+        clearInterval(timer);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [battleStarted, battleStartTime, battleEndResult]);
+
   // Define battle event handlers
   const handleBattleEndEvent = useCallback((result: any) => {
     console.log('Battle ended:', result);
     setBattleStatus(`Battle Over! ${result.stars} Stars - ${result.destructionPercentage}% Destruction`);
     setDestructionPercentage(result.destructionPercentage);
 
-    setTimeout(() => {
-      router.push(`/village?battleResult=${encodeURIComponent(JSON.stringify(result))}`);
-    }, 3000);
-  }, [router]);
+    // Show battle summary instead of auto-redirecting
+    setBattleEndResult(result);
+  }, []);
 
   const handleBattleEvent = useCallback((event: BattleEvent) => {
     console.log('📡 Battle event received:', event.type, event.data);
@@ -795,6 +820,18 @@ export default function BattlePage() {
               <h3 className="font-bold text-lg mb-2">Battle Status</h3>
               <p className="text-sm mb-2">{battleStatus}</p>
               <div className="space-y-2">
+                {/* Battle Timer */}
+                {battleStarted && !battleEndResult && (
+                  <div className="flex items-center justify-between text-sm p-2 bg-blue-50 dark:bg-blue-950 rounded">
+                    <span className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-blue-500" />
+                      Time Remaining:
+                    </span>
+                    <span className={`font-bold font-mono ${timeRemaining < 30 ? 'text-red-600 animate-pulse' : 'text-blue-600'}`}>
+                      {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-sm">
                   <span>Destruction:</span>
                   <span className="font-bold text-red-600">{destructionPercentage}%</span>
@@ -883,6 +920,16 @@ export default function BattlePage() {
           </div>
         </div>
       </div>
+
+      {/* Battle Summary Modal */}
+      {battleEndResult && (
+        <BattleSummary
+          battleResult={battleEndResult}
+          onReturnToVillage={() => {
+            router.push('/village');
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -453,27 +453,34 @@ export class BattleSessionManager {
     if (session.destructionPercentage >= 70) stars = 2;
     if (session.destructionPercentage >= 100) stars = 3;
 
+    let lootGold = 0;
+    let lootElixir = 0;
+
+    // Update battle results in database and get loot amounts
+    if (this.battlesService) {
+      try {
+        const loot = await this.battlesService.updateBattleResults(
+          battleId,
+          session.destructionPercentage,
+          stars,
+        );
+        lootGold = loot?.lootGold ?? 0;
+        lootElixir = loot?.lootElixir ?? 0;
+      } catch (error) {
+        console.error('Failed to update battle results:', error);
+      }
+    }
+
     const result = {
       battleId,
       destructionPercentage: session.destructionPercentage,
       stars,
       duration: Date.now() - session.startTime,
+      lootGold,
+      lootElixir,
     };
 
     console.log(`Battle ${battleId} ended:`, result);
-
-    // Update battle results in database
-    if (this.battlesService) {
-      try {
-        await this.battlesService.updateBattleResults(
-          battleId,
-          session.destructionPercentage,
-          stars,
-        );
-      } catch (error) {
-        console.error('Failed to update battle results:', error);
-      }
-    }
 
     this.broadcastEvent(session, 'BATTLE_END', result);
 

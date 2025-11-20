@@ -619,14 +619,14 @@ export class BattlesService {
     battleId: string,
     destructionPercentage: number,
     stars: number,
-  ): Promise<void> {
+  ): Promise<{ lootGold: number; lootElixir: number } | null> {
     console.log(`Updating battle ${battleId} results: ${destructionPercentage}% destruction, ${stars} stars`);
 
     // Calculate loot based on destruction percentage
     const battleRecord = await this.getBattleById(battleId);
     if (!battleRecord) {
       console.error(`Battle ${battleId} not found for update`);
-      return;
+      return null;
     }
 
     const { lootGold, lootElixir } = await this.calculateLoot(
@@ -658,6 +658,8 @@ export class BattlesService {
 
       console.log(`Awarded ${lootGold} gold and ${lootElixir} elixir to attacker`);
     }
+
+    return { lootGold, lootElixir };
   }
 
   /**
