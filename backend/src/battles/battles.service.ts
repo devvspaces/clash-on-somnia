@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, ne, sql } from 'drizzle-orm';
 import * as schema from '../database/schema';
 import { battles, Battle, NewBattle } from '../database/schema/battles.schema';
 import { buildings } from '../database/schema/buildings.schema';
@@ -433,12 +433,12 @@ export class BattlesService {
       })
       .returning();
 
-    // Give loot to attacker
+    // Give loot to attacker (increment existing resources)
     await this.db
       .update(resources)
       .set({
-        gold: result.lootGold,
-        elixir: result.lootElixir,
+        gold: sql`${resources.gold} + ${result.lootGold}`,
+        elixir: sql`${resources.elixir} + ${result.lootElixir}`,
       })
       .where(eq(resources.villageId, attackerId));
 
@@ -484,7 +484,7 @@ export class BattlesService {
     const opponents = await this.db
       .select()
       .from(villages)
-      .where(eq(villages.id, attackerVillageId));
+      .where(ne(villages.id, attackerVillageId));
 
     if (opponents.length === 0) return null;
 
