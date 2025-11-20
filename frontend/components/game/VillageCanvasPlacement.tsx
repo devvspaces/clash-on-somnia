@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import * as PIXI from 'pixi.js';
 import { Building } from '@/lib/api';
 import { getBuildingVisual } from '@/lib/config/buildings';
@@ -32,8 +32,12 @@ export function VillageCanvasPlacement({
   const appRef = useRef<PIXI.Application | null>(null);
   const buildingContainersRef = useRef<Map<string, PIXI.Container>>(new Map());
   const previewRef = useRef<PIXI.Graphics | null>(null);
+  const suggestedPreviewRef = useRef<PIXI.Graphics | null>(null);
   const draggedBuildingRef = useRef<{ building: Building; startX: number; startY: number } | null>(null);
   const selectedBuildingRef = useRef<Building | null>(null);
+  const wallPlacementHistoryRef = useRef<{x: number, y: number}[]>([]);
+  const [selectedWalls, setSelectedWalls] = useState<Set<string>>(new Set());
+  const selectionGraphicsRef = useRef<Map<string, PIXI.Graphics>>(new Map());
 
   // Initialize Pixi app ONCE
   useEffect(() => {
@@ -72,6 +76,41 @@ export function VillageCanvasPlacement({
     };
   }, []);
 
+  // Draw selection highlights for selected walls
+  useEffect(() => {
+    const app = appRef.current;
+    if (!app) return;
+
+    // Remove old selection graphics
+    selectionGraphicsRef.current.forEach((graphics, id) => {
+      if (!selectedWalls.has(id)) {
+        if (graphics && graphics.parent) {
+          app.stage.removeChild(graphics);
+        }
+        selectionGraphicsRef.current.delete(id);
+      }
+    });
+
+    // Add new selection graphics
+    selectedWalls.forEach((wallId) => {
+      if (!selectionGraphicsRef.current.has(wallId)) {
+        const wall = buildings.find(b => b.id === wallId);
+        if (wall) {
+          const graphics = new PIXI.Graphics();
+          graphics.lineStyle(3, 0xffff00, 1);
+          graphics.drawRect(
+            wall.positionX * TILE_SIZE - 2,
+            wall.positionY * TILE_SIZE - 2,
+            TILE_SIZE + 4,
+            TILE_SIZE + 4
+          );
+          selectionGraphicsRef.current.set(wallId, graphics);
+          app.stage.addChild(graphics);
+        }
+      }
+    });
+  }, [selectedWalls, buildings]);
+
   // Draw/update buildings when they change
   useEffect(() => {
     const app = appRef.current;
@@ -95,11 +134,13 @@ export function VillageCanvasPlacement({
         // Create new building
         container = createBuildingContainer(
           building,
-          onBuildingClick,
+          (clickedBuilding, isShiftClick) => handleBuildingClick(clickedBuilding, isShiftClick),
           onBuildingMove,
           draggedBuildingRef,
           selectedBuildingRef,
           () => buildings,
+          selectedWalls,
+          (buildingIds) => handleMultiMove(buildingIds),
         );
         buildingContainersRef.current.set(building.id, container);
         app.stage.addChild(container);
@@ -111,11 +152,13 @@ export function VillageCanvasPlacement({
           buildingContainersRef.current.delete(building.id);
           container = createBuildingContainer(
             building,
-            onBuildingClick,
+            (clickedBuilding, isShiftClick) => handleBuildingClick(clickedBuilding, isShiftClick),
             onBuildingMove,
             draggedBuildingRef,
             selectedBuildingRef,
             () => buildings,
+            selectedWalls,
+            (buildingIds) => handleMultiMove(buildingIds),
           );
           buildingContainersRef.current.set(building.id, container);
           app.stage.addChild(container);
@@ -131,17 +174,68 @@ export function VillageCanvasPlacement({
         }
       }
     });
-  }, [buildings, onBuildingClick, onBuildingMove]);
+  }, [buildings, onBuildingMove, selectedWalls]);
 
-  // Handle placement mode
+  const handleBuildingClick = (clickedBuilding: Building, isShiftClick: boolean) => {
+    if (clickedBuilding.type === 'wall' && isShiftClick) {
+      // Shift+click on wall - range selection
+      if (selectedWalls.size === 0) {
+        // First wall selected
+        setSelectedWalls(new Set([clickedBuilding.id]));
+      } else {
+        // Select range between first selected and clicked wall
+        const firstWallId = Array.from(selectedWalls)[0];
+        const firstWall = buildings.find(b => b.id === firstWallId);
+        if (firstWall) {
+          const rangeWalls = getWallRange(firstWall, clickedBuilding, buildings);
+          if (rangeWalls) {
+            setSelectedWalls(new Set(rangeWalls.map(w => w.id)));
+          }
+        }
+      }
+    } else if (clickedBuilding.type === 'wall' && !isShiftClick) {
+      // Regular click on wall - single select
+      setSelectedWalls(new Set([clickedBuilding.id]));
+    } else {
+      // Not a wall or not shift-click - clear selection and call original handler
+      setSelectedWalls(new Set());
+      if (onBuildingClick) {
+        onBuildingClick(clickedBuilding);
+      }
+    }
+  };
+
+  const handleMultiMove = async (buildingIds: Set<string>, deltaX: number, deltaY: number) => {
+    if (!onBuildingMove) return;
+
+    // Move all selected buildings
+    const movePromises = Array.from(buildingIds).map(async (id) => {
+      const building = buildings.find(b => b.id === id);
+      if (building) {
+        const newX = building.positionX + deltaX;
+        const newY = building.positionY + deltaY;
+        await onBuildingMove(id, newX, newY);
+      }
+    });
+
+    await Promise.all(movePromises);
+  };
+
+  // Handle placement mode with continuous wall placement
   useEffect(() => {
     const app = appRef.current;
     if (!app || !placementMode?.active) {
-      // Remove preview if it exists
+      // Remove previews if they exist
       if (previewRef.current) {
         app?.stage.removeChild(previewRef.current);
         previewRef.current = null;
       }
+      if (suggestedPreviewRef.current) {
+        app?.stage.removeChild(suggestedPreviewRef.current);
+        suggestedPreviewRef.current = null;
+      }
+      // Clear wall placement history when exiting placement mode
+      wallPlacementHistoryRef.current = [];
       return;
     }
 
@@ -151,7 +245,46 @@ export function VillageCanvasPlacement({
     previewRef.current = preview;
     app.stage.addChild(preview);
 
+    // Create suggested preview for walls
+    let suggestedPreview: PIXI.Graphics | null = null;
+    if (placementMode.buildingType === BuildingType.WALL) {
+      suggestedPreview = new PIXI.Graphics();
+      suggestedPreview.name = 'suggestedPreview';
+      suggestedPreviewRef.current = suggestedPreview;
+      app.stage.addChild(suggestedPreview);
+    }
+
     const config = getBuildingConfig(placementMode.buildingType);
+    let suggestedPosition: {x: number, y: number} | null = null;
+
+    // Calculate suggested position for walls based on last 2 placements
+    if (placementMode.buildingType === BuildingType.WALL && wallPlacementHistoryRef.current.length >= 1) {
+      const history = wallPlacementHistoryRef.current;
+      if (history.length === 1) {
+        // Only one wall placed, suggest right or below
+        const last = history[0];
+        suggestedPosition = { x: last.x + 1, y: last.y };
+        // Check if right is valid, otherwise try below
+        if (!checkPlacementValid(suggestedPosition.x, suggestedPosition.y, 1, 1, buildings, null)) {
+          suggestedPosition = { x: last.x, y: last.y + 1 };
+          if (!checkPlacementValid(suggestedPosition.x, suggestedPosition.y, 1, 1, buildings, null)) {
+            suggestedPosition = null;
+          }
+        }
+      } else {
+        // Two or more walls placed, determine direction
+        const last = history[history.length - 1];
+        const secondLast = history[history.length - 2];
+        const dx = last.x - secondLast.x;
+        const dy = last.y - secondLast.y;
+
+        // Continue in same direction
+        suggestedPosition = { x: last.x + dx, y: last.y + dy };
+        if (!checkPlacementValid(suggestedPosition.x, suggestedPosition.y, 1, 1, buildings, null)) {
+          suggestedPosition = null;
+        }
+      }
+    }
 
     const handleMouseMove = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
@@ -168,6 +301,20 @@ export function VillageCanvasPlacement({
       preview.lineStyle(2, color, 0.8);
       preview.drawRect(gridX * TILE_SIZE, gridY * TILE_SIZE, config.size.width * TILE_SIZE, config.size.height * TILE_SIZE);
       preview.endFill();
+
+      // Draw suggested preview for walls
+      if (suggestedPreview && suggestedPosition) {
+        suggestedPreview.clear();
+        suggestedPreview.beginFill(0x00ffff, 0.3);
+        suggestedPreview.lineStyle(2, 0x00ffff, 0.6);
+        suggestedPreview.drawRect(
+          suggestedPosition.x * TILE_SIZE,
+          suggestedPosition.y * TILE_SIZE,
+          TILE_SIZE,
+          TILE_SIZE
+        );
+        suggestedPreview.endFill();
+      }
     };
 
     const handleClick = (e: MouseEvent) => {
@@ -180,16 +327,27 @@ export function VillageCanvasPlacement({
       const valid = checkPlacementValid(gridX, gridY, config.size.width, config.size.height, buildings, null);
       if (valid) {
         placementMode.onPlace(gridX, gridY);
+
+        // For walls, add to placement history and don't cancel
+        if (placementMode.buildingType === BuildingType.WALL) {
+          wallPlacementHistoryRef.current.push({ x: gridX, y: gridY });
+          // Keep only last 10 placements for history
+          if (wallPlacementHistoryRef.current.length > 10) {
+            wallPlacementHistoryRef.current.shift();
+          }
+        }
       }
     };
 
     const handleRightClick = (e: MouseEvent) => {
       e.preventDefault();
+      wallPlacementHistoryRef.current = [];
       placementMode.onCancel();
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        wallPlacementHistoryRef.current = [];
         placementMode.onCancel();
       }
     };
@@ -208,6 +366,10 @@ export function VillageCanvasPlacement({
         app.stage.removeChild(previewRef.current);
         previewRef.current = null;
       }
+      if (suggestedPreviewRef.current && app?.stage) {
+        app.stage.removeChild(suggestedPreviewRef.current);
+        suggestedPreviewRef.current = null;
+      }
     };
   }, [placementMode, buildings]);
 
@@ -220,7 +382,18 @@ export function VillageCanvasPlacement({
       />
       {placementMode?.active && (
         <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-md bg-black/70 px-4 py-2 text-white">
-          <p className="text-sm">Click to place • Right-click or ESC to cancel</p>
+          <p className="text-sm">
+            {placementMode.buildingType === BuildingType.WALL
+              ? 'Click to place walls • Cyan = suggested • Right-click or ESC to cancel'
+              : 'Click to place • Right-click or ESC to cancel'}
+          </p>
+        </div>
+      )}
+      {selectedWalls.size > 0 && (
+        <div className="absolute left-1/2 bottom-4 -translate-x-1/2 rounded-md bg-black/70 px-4 py-2 text-white">
+          <p className="text-sm">
+            {selectedWalls.size} wall{selectedWalls.size > 1 ? 's' : ''} selected • Drag to move • Click elsewhere to deselect
+          </p>
         </div>
       )}
     </div>
@@ -229,11 +402,13 @@ export function VillageCanvasPlacement({
 
 function createBuildingContainer(
   building: Building,
-  onBuildingClick?: (building: Building) => void,
+  onBuildingClick?: (building: Building, isShiftClick: boolean) => void,
   onBuildingMove?: (buildingId: string, x: number, y: number) => Promise<void>,
   draggedBuildingRef?: React.MutableRefObject<{ building: Building; startX: number; startY: number } | null>,
   selectedBuildingRef?: React.MutableRefObject<Building | null>,
   getBuildings?: () => Building[],
+  selectedWalls?: Set<string>,
+  onMultiMove?: (buildingIds: Set<string>, deltaX: number, deltaY: number) => Promise<void>,
 ): PIXI.Container {
   const visualConfig = getBuildingVisual(building.type);
   const color = parseInt(visualConfig.color.replace('#', ''), 16);
@@ -296,6 +471,7 @@ function createBuildingContainer(
   let dragStartPos = { x: 0, y: 0 };
   let originalPos = { x: container.x, y: container.y };
   let dragPreview: PIXI.Graphics | null = null;
+  let dragStartGridPos = { x: 0, y: 0 };
 
   // Interaction handlers
   container.on('pointerover', () => {
@@ -311,9 +487,11 @@ function createBuildingContainer(
   });
 
   container.on('pointerdown', (event: PIXI.FederatedPointerEvent) => {
+    const isShiftClick = event.shiftKey;
+
     if (onBuildingClick) {
-      onBuildingClick(building);
-      if (selectedBuildingRef) {
+      onBuildingClick(building, isShiftClick);
+      if (selectedBuildingRef && !isShiftClick) {
         selectedBuildingRef.current = building;
       }
       label.visible = true; // Keep label visible when selected
@@ -324,6 +502,7 @@ function createBuildingContainer(
     container.cursor = 'grabbing';
     dragStartPos = { x: event.globalX, y: event.globalY };
     originalPos = { x: container.x, y: container.y };
+    dragStartGridPos = { x: building.positionX, y: building.positionY };
 
     if (draggedBuildingRef) {
       draggedBuildingRef.current = {
@@ -356,25 +535,53 @@ function createBuildingContainer(
     const gridX = Math.round(container.x / TILE_SIZE);
     const gridY = Math.round(container.y / TILE_SIZE);
 
-    // Check if valid placement
+    // Check if valid placement (for single or multi-select)
     const buildingConfig = getBuildingVisual(building.type);
     const allBuildings = getBuildings ? getBuildings() : [];
-    const valid = checkPlacementValid(
-      gridX,
-      gridY,
-      buildingConfig.size.width,
-      buildingConfig.size.height,
-      allBuildings,
-      building.id,
-    );
 
-    // Draw preview
-    dragPreview.clear();
-    const previewColor = valid ? 0x00ff00 : 0xff0000;
-    dragPreview.beginFill(previewColor, 0.3);
-    dragPreview.lineStyle(2, previewColor, 0.8);
-    dragPreview.drawRect(gridX * TILE_SIZE, gridY * TILE_SIZE, width, height);
-    dragPreview.endFill();
+    let valid = false;
+    if (selectedWalls && selectedWalls.size > 1 && selectedWalls.has(building.id)) {
+      // Multi-select move - check all walls
+      const deltaX = gridX - dragStartGridPos.x;
+      const deltaY = gridY - dragStartGridPos.y;
+      valid = checkMultiPlacementValid(selectedWalls, deltaX, deltaY, allBuildings);
+
+      // Draw previews for all selected walls
+      dragPreview.clear();
+      const previewColor = valid ? 0x00ff00 : 0xff0000;
+      selectedWalls.forEach(wallId => {
+        const wall = allBuildings.find(b => b.id === wallId);
+        if (wall) {
+          dragPreview!.beginFill(previewColor, 0.3);
+          dragPreview!.lineStyle(2, previewColor, 0.8);
+          dragPreview!.drawRect(
+            (wall.positionX + deltaX) * TILE_SIZE,
+            (wall.positionY + deltaY) * TILE_SIZE,
+            TILE_SIZE,
+            TILE_SIZE
+          );
+          dragPreview!.endFill();
+        }
+      });
+    } else {
+      // Single building move
+      valid = checkPlacementValid(
+        gridX,
+        gridY,
+        buildingConfig.size.width,
+        buildingConfig.size.height,
+        allBuildings,
+        building.id,
+      );
+
+      // Draw preview
+      dragPreview.clear();
+      const previewColor = valid ? 0x00ff00 : 0xff0000;
+      dragPreview.beginFill(previewColor, 0.3);
+      dragPreview.lineStyle(2, previewColor, 0.8);
+      dragPreview.drawRect(gridX * TILE_SIZE, gridY * TILE_SIZE, width, height);
+      dragPreview.endFill();
+    }
   });
 
   container.on('pointerup', async (event: PIXI.FederatedPointerEvent) => {
@@ -389,30 +596,48 @@ function createBuildingContainer(
 
     const buildingConfig = getBuildingVisual(building.type);
     const allBuildings = getBuildings ? getBuildings() : [];
-    const valid = checkPlacementValid(
-      gridX,
-      gridY,
-      buildingConfig.size.width,
-      buildingConfig.size.height,
-      allBuildings,
-      building.id,
-    );
 
-    if (valid && onBuildingMove && (gridX !== building.positionX || gridY !== building.positionY)) {
-      // Valid placement - call API to move
-      try {
-        await onBuildingMove(building.id, gridX, gridY);
-        // Position will be updated when buildings prop changes
-      } catch (error) {
-        // Revert to original position on error
+    // Handle multi-select move
+    if (selectedWalls && selectedWalls.size > 1 && selectedWalls.has(building.id)) {
+      const deltaX = gridX - dragStartGridPos.x;
+      const deltaY = gridY - dragStartGridPos.y;
+      const valid = checkMultiPlacementValid(selectedWalls, deltaX, deltaY, allBuildings);
+
+      if (valid && (deltaX !== 0 || deltaY !== 0) && onMultiMove) {
+        try {
+          await onMultiMove(selectedWalls, deltaX, deltaY);
+        } catch (error) {
+          container.x = originalPos.x;
+          container.y = originalPos.y;
+          alert('Failed to move buildings');
+        }
+      } else {
         container.x = originalPos.x;
         container.y = originalPos.y;
-        alert('Failed to move building');
       }
     } else {
-      // Invalid or no change - revert to original position
-      container.x = originalPos.x;
-      container.y = originalPos.y;
+      // Single building move
+      const valid = checkPlacementValid(
+        gridX,
+        gridY,
+        buildingConfig.size.width,
+        buildingConfig.size.height,
+        allBuildings,
+        building.id,
+      );
+
+      if (valid && onBuildingMove && (gridX !== building.positionX || gridY !== building.positionY)) {
+        try {
+          await onBuildingMove(building.id, gridX, gridY);
+        } catch (error) {
+          container.x = originalPos.x;
+          container.y = originalPos.y;
+          alert('Failed to move building');
+        }
+      } else {
+        container.x = originalPos.x;
+        container.y = originalPos.y;
+      }
     }
 
     // Remove preview
@@ -482,4 +707,76 @@ function checkPlacementValid(
   }
 
   return true;
+}
+
+function checkMultiPlacementValid(
+  selectedIds: Set<string>,
+  deltaX: number,
+  deltaY: number,
+  allBuildings: Building[],
+): boolean {
+  // Check if all selected walls can be moved by delta
+  for (const id of selectedIds) {
+    const wall = allBuildings.find(b => b.id === id);
+    if (!wall) continue;
+
+    const newX = wall.positionX + deltaX;
+    const newY = wall.positionY + deltaY;
+
+    // Check bounds
+    if (newX < 0 || newY < 0 || newX + 1 > GRID_SIZE || newY + 1 > GRID_SIZE) {
+      return false;
+    }
+
+    // Check collisions with non-selected buildings
+    for (const other of allBuildings) {
+      if (selectedIds.has(other.id)) continue; // Skip selected walls
+
+      const otherConfig = getBuildingVisual(other.type);
+      if (
+        newX < other.positionX + otherConfig.size.width &&
+        newX + 1 > other.positionX &&
+        newY < other.positionY + otherConfig.size.height &&
+        newY + 1 > other.positionY
+      ) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+function getWallRange(wall1: Building, wall2: Building, allBuildings: Building[]): Building[] | null {
+  // Check if walls are in a straight line (horizontal or vertical)
+  const dx = wall2.positionX - wall1.positionX;
+  const dy = wall2.positionY - wall1.positionY;
+
+  // Not in a straight line
+  if (dx !== 0 && dy !== 0) return null;
+
+  // Get all walls in the range
+  const rangeWalls: Building[] = [];
+  const minX = Math.min(wall1.positionX, wall2.positionX);
+  const maxX = Math.max(wall1.positionX, wall2.positionX);
+  const minY = Math.min(wall1.positionY, wall2.positionY);
+  const maxY = Math.max(wall1.positionY, wall2.positionY);
+
+  if (dx === 0) {
+    // Vertical line
+    for (let y = minY; y <= maxY; y++) {
+      const wall = allBuildings.find(b => b.type === 'wall' && b.positionX === wall1.positionX && b.positionY === y);
+      if (!wall) return null; // Gap found
+      rangeWalls.push(wall);
+    }
+  } else {
+    // Horizontal line
+    for (let x = minX; x <= maxX; x++) {
+      const wall = allBuildings.find(b => b.type === 'wall' && b.positionX === x && b.positionY === wall1.positionY);
+      if (!wall) return null; // Gap found
+      rangeWalls.push(wall);
+    }
+  }
+
+  return rangeWalls;
 }
