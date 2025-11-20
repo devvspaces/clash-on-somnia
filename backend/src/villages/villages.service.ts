@@ -33,7 +33,14 @@ export class VillagesService {
       lastCollectedAt: oneHourAgo,
     });
 
-    // Create initial buildings
+    // Create initial buildings with internal storage fields
+    const townHallConfig = getBuildingConfig(BuildingType.TOWN_HALL);
+    const goldMineConfig = getBuildingConfig(BuildingType.GOLD_MINE);
+    const elixirCollectorConfig = getBuildingConfig(BuildingType.ELIXIR_COLLECTOR);
+    const goldStorageConfig = getBuildingConfig(BuildingType.GOLD_STORAGE);
+    const elixirStorageConfig = getBuildingConfig(BuildingType.ELIXIR_STORAGE);
+    const armyCampConfig = getBuildingConfig(BuildingType.ARMY_CAMP);
+
     const initialBuildings = [
       // Town Hall at center
       {
@@ -42,51 +49,94 @@ export class VillagesService {
         level: 1,
         positionX: 18,
         positionY: 18,
-        health: getBuildingConfig(BuildingType.TOWN_HALL).maxHealth,
-        maxHealth: getBuildingConfig(BuildingType.TOWN_HALL).maxHealth,
+        health: townHallConfig.maxHealth,
+        maxHealth: townHallConfig.maxHealth,
         isActive: true,
+        internalGold: 0,
+        internalElixir: 0,
+        internalGoldCapacity: 0,
+        internalElixirCapacity: 0,
+        lastCollectedAt: new Date(),
       },
-      // 2 Gold Mines
+      // 1 Gold Mine
       {
         villageId: village.id,
         type: BuildingType.GOLD_MINE,
         level: 1,
         positionX: 10,
         positionY: 15,
-        health: getBuildingConfig(BuildingType.GOLD_MINE).maxHealth,
-        maxHealth: getBuildingConfig(BuildingType.GOLD_MINE).maxHealth,
+        health: goldMineConfig.maxHealth,
+        maxHealth: goldMineConfig.maxHealth,
         isActive: true,
+        internalGold: 0,
+        internalElixir: 0,
+        internalGoldCapacity: goldMineConfig.capacity || 0,
+        internalElixirCapacity: 0,
+        lastCollectedAt: oneHourAgo,
       },
-      {
-        villageId: village.id,
-        type: BuildingType.GOLD_MINE,
-        level: 1,
-        positionX: 10,
-        positionY: 22,
-        health: getBuildingConfig(BuildingType.GOLD_MINE).maxHealth,
-        maxHealth: getBuildingConfig(BuildingType.GOLD_MINE).maxHealth,
-        isActive: true,
-      },
-      // 2 Elixir Collectors
+      // 1 Elixir Collector
       {
         villageId: village.id,
         type: BuildingType.ELIXIR_COLLECTOR,
         level: 1,
         positionX: 28,
         positionY: 15,
-        health: getBuildingConfig(BuildingType.ELIXIR_COLLECTOR).maxHealth,
-        maxHealth: getBuildingConfig(BuildingType.ELIXIR_COLLECTOR).maxHealth,
+        health: elixirCollectorConfig.maxHealth,
+        maxHealth: elixirCollectorConfig.maxHealth,
         isActive: true,
+        internalGold: 0,
+        internalElixir: 0,
+        internalGoldCapacity: 0,
+        internalElixirCapacity: elixirCollectorConfig.capacity || 0,
+        lastCollectedAt: oneHourAgo,
       },
+      // Gold Storage
       {
         villageId: village.id,
-        type: BuildingType.ELIXIR_COLLECTOR,
+        type: BuildingType.GOLD_STORAGE,
         level: 1,
-        positionX: 28,
-        positionY: 22,
-        health: getBuildingConfig(BuildingType.ELIXIR_COLLECTOR).maxHealth,
-        maxHealth: getBuildingConfig(BuildingType.ELIXIR_COLLECTOR).maxHealth,
+        positionX: 8,
+        positionY: 25,
+        health: goldStorageConfig.maxHealth,
+        maxHealth: goldStorageConfig.maxHealth,
         isActive: true,
+        internalGold: 0,
+        internalElixir: 0,
+        internalGoldCapacity: 0,
+        internalElixirCapacity: 0,
+        lastCollectedAt: new Date(),
+      },
+      // Elixir Storage
+      {
+        villageId: village.id,
+        type: BuildingType.ELIXIR_STORAGE,
+        level: 1,
+        positionX: 30,
+        positionY: 25,
+        health: elixirStorageConfig.maxHealth,
+        maxHealth: elixirStorageConfig.maxHealth,
+        isActive: true,
+        internalGold: 0,
+        internalElixir: 0,
+        internalGoldCapacity: 0,
+        internalElixirCapacity: 0,
+        lastCollectedAt: new Date(),
+      },
+      // Army Camp
+      {
+        villageId: village.id,
+        type: BuildingType.ARMY_CAMP,
+        level: 1,
+        positionX: 18,
+        positionY: 8,
+        health: armyCampConfig.maxHealth,
+        maxHealth: armyCampConfig.maxHealth,
+        isActive: true,
+        internalGold: 0,
+        internalElixir: 0,
+        internalGoldCapacity: 0,
+        internalElixirCapacity: 0,
+        lastCollectedAt: new Date(),
       },
     ];
 
