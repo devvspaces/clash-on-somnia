@@ -12,7 +12,37 @@ export interface MoveBuildingRequest {
   positionY: number;
 }
 
+export interface BuildingConfig {
+  type: string;
+  name: string;
+  description: string;
+  category: 'resource' | 'defense' | 'army' | 'special';
+  baseCost: {
+    gold: number;
+    elixir: number;
+  };
+  buildTime: number; // seconds
+  size: {
+    width: number;
+    height: number;
+  };
+  maxHealth: number;
+  generationRate?: number; // per hour
+  capacity?: number; // max storage
+  defense?: {
+    damage: number;
+    range: number;
+    attackSpeed: number;
+    targetType: 'ground' | 'air' | 'both';
+  };
+}
+
 export const buildingsApi = {
+  getBuildingConfigs: async (): Promise<Record<string, BuildingConfig>> => {
+    const response = await apiClient.get<Record<string, BuildingConfig>>('/buildings/configs');
+    return response.data;
+  },
+
   placeBuilding: async (data: PlaceBuildingRequest): Promise<{ message: string; building: Building }> => {
     const response = await apiClient.post<{ message: string; building: Building }>(
       '/buildings/place',

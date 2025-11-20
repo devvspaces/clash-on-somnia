@@ -29,6 +29,8 @@ export class BuildingsService {
 
     const newBuildings = [];
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const now = new Date();
+    const immediately = new Date(now.getTime() - 1000); // 1 second in past for immediate functionality
 
     // Town Hall (center of village)
     if (!hasTownHall) {
@@ -46,7 +48,8 @@ export class BuildingsService {
         internalElixir: 0,
         internalGoldCapacity: 0,
         internalElixirCapacity: 0,
-        lastCollectedAt: new Date(),
+        lastCollectedAt: now,
+        constructionCompletedAt: immediately,
       });
     }
 
@@ -67,6 +70,7 @@ export class BuildingsService {
         internalGoldCapacity: goldMineConfig.capacity || 0,
         internalElixirCapacity: 0,
         lastCollectedAt: oneHourAgo,
+        constructionCompletedAt: immediately,
       });
     }
 
@@ -87,6 +91,7 @@ export class BuildingsService {
         internalGoldCapacity: 0,
         internalElixirCapacity: elixirCollectorConfig.capacity || 0,
         lastCollectedAt: oneHourAgo,
+        constructionCompletedAt: immediately,
       });
     }
 
@@ -106,7 +111,8 @@ export class BuildingsService {
         internalElixir: 0,
         internalGoldCapacity: 0,
         internalElixirCapacity: 0,
-        lastCollectedAt: new Date(),
+        lastCollectedAt: now,
+        constructionCompletedAt: immediately,
       });
     }
 
@@ -126,7 +132,8 @@ export class BuildingsService {
         internalElixir: 0,
         internalGoldCapacity: 0,
         internalElixirCapacity: 0,
-        lastCollectedAt: new Date(),
+        lastCollectedAt: now,
+        constructionCompletedAt: immediately,
       });
     }
 
@@ -146,7 +153,8 @@ export class BuildingsService {
         internalElixir: 0,
         internalGoldCapacity: 0,
         internalElixirCapacity: 0,
-        lastCollectedAt: new Date(),
+        lastCollectedAt: now,
+        constructionCompletedAt: immediately,
       });
     }
 

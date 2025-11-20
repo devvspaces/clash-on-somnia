@@ -1,9 +1,10 @@
-import { Controller, Post, Put, Delete, UseGuards, Req, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, UseGuards, Req, Body, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { BuildingsService } from './buildings.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { VillagesService } from '../villages/villages.service';
 import { PlaceBuildingDto, MoveBuildingDto } from './dto/building.dto';
+import { BUILDING_CONFIGS } from '../common/config/buildings.config';
 
 @ApiTags('buildings')
 @Controller('buildings')
@@ -14,6 +15,13 @@ export class BuildingsController {
     private buildingsService: BuildingsService,
     private villagesService: VillagesService,
   ) {}
+
+  @Get('configs')
+  @ApiOperation({ summary: 'Get all building configurations' })
+  @ApiResponse({ status: 200, description: 'Building configurations retrieved' })
+  getBuildingConfigs() {
+    return BUILDING_CONFIGS;
+  }
 
   @Post('add-starter-buildings')
   @ApiOperation({

@@ -41,6 +41,10 @@ export class VillagesService {
     const elixirStorageConfig = getBuildingConfig(BuildingType.ELIXIR_STORAGE);
     const armyCampConfig = getBuildingConfig(BuildingType.ARMY_CAMP);
 
+    // Starter buildings should be immediately functional
+    const now = new Date();
+    const immediately = new Date(now.getTime() - 1000); // 1 second in the past to ensure complete
+
     const initialBuildings = [
       // Town Hall at center
       {
@@ -56,7 +60,8 @@ export class VillagesService {
         internalElixir: 0,
         internalGoldCapacity: 0,
         internalElixirCapacity: 0,
-        lastCollectedAt: new Date(),
+        lastCollectedAt: now,
+        constructionCompletedAt: immediately,
       },
       // 1 Gold Mine
       {
@@ -73,6 +78,7 @@ export class VillagesService {
         internalGoldCapacity: goldMineConfig.capacity || 0,
         internalElixirCapacity: 0,
         lastCollectedAt: oneHourAgo,
+        constructionCompletedAt: immediately,
       },
       // 1 Elixir Collector
       {
@@ -89,6 +95,7 @@ export class VillagesService {
         internalGoldCapacity: 0,
         internalElixirCapacity: elixirCollectorConfig.capacity || 0,
         lastCollectedAt: oneHourAgo,
+        constructionCompletedAt: immediately,
       },
       // Gold Storage
       {
@@ -104,7 +111,8 @@ export class VillagesService {
         internalElixir: 0,
         internalGoldCapacity: 0,
         internalElixirCapacity: 0,
-        lastCollectedAt: new Date(),
+        lastCollectedAt: now,
+        constructionCompletedAt: immediately,
       },
       // Elixir Storage
       {
@@ -120,7 +128,8 @@ export class VillagesService {
         internalElixir: 0,
         internalGoldCapacity: 0,
         internalElixirCapacity: 0,
-        lastCollectedAt: new Date(),
+        lastCollectedAt: now,
+        constructionCompletedAt: immediately,
       },
       // Army Camp
       {
@@ -136,7 +145,8 @@ export class VillagesService {
         internalElixir: 0,
         internalGoldCapacity: 0,
         internalElixirCapacity: 0,
-        lastCollectedAt: new Date(),
+        lastCollectedAt: now,
+        constructionCompletedAt: immediately,
       },
     ];
 
