@@ -13,11 +13,7 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { BattlesService } from './battles.service';
 import { TroopType } from '../common/config/troops.config';
-
-class AttackDto {
-  defenderId: string;
-  troops: { type: TroopType; count: number }[];
-}
+import { AttackDto } from './dto/attack.dto';
 
 @Controller('battles')
 @UseGuards(JwtAuthGuard)
