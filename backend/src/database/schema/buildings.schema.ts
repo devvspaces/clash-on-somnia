@@ -13,6 +13,12 @@ export const buildings = pgTable('buildings', {
   health: integer('health').notNull(),
   maxHealth: integer('max_health').notNull(),
   isActive: boolean('is_active').default(true).notNull(),
+  // Internal storage for collectors
+  internalGold: integer('internal_gold').default(0).notNull(),
+  internalElixir: integer('internal_elixir').default(0).notNull(),
+  internalGoldCapacity: integer('internal_gold_capacity').default(0).notNull(),
+  internalElixirCapacity: integer('internal_elixir_capacity').default(0).notNull(),
+  lastCollectedAt: timestamp('last_collected_at').defaultNow().notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

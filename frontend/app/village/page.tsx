@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore, useVillageStore } from '@/lib/stores';
 import { Navbar } from '@/components/layout/Navbar';
 import { VillageCanvasPlacement } from '@/components/game/VillageCanvasPlacement';
-import { ResourceCollector } from '@/components/game/ResourceCollector';
 import { BuildingShop } from '@/components/game/BuildingShop';
 import { ArmyTraining } from '@/components/game/ArmyTraining';
 import { BattlePreparation } from '@/components/game/BattlePreparation';
@@ -264,14 +263,6 @@ export default function VillagePage() {
               </CardContent>
             </Card>
 
-            {resources && !placementMode?.active && (
-              <ResourceCollector
-                pendingGold={resources.pending.gold}
-                pendingElixir={resources.pending.elixir}
-                onCollect={handleCollectResources}
-              />
-            )}
-
             {selectedBuilding && !placementMode?.active && (
               <Card className="border-2 border-primary">
                 <CardHeader>
@@ -303,6 +294,93 @@ export default function VillagePage() {
                       {selectedBuilding.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </div>
+
+                  {/* Collector-specific info (Gold Mine, Elixir Collector) */}
+                  {(selectedBuilding.type === 'gold_mine' || selectedBuilding.type === 'elixir_collector') && (
+                    <>
+                      <div className="border-t pt-3 space-y-2">
+                        <p className="text-sm font-semibold text-muted-foreground">Internal Storage</p>
+                        {selectedBuilding.type === 'gold_mine' && (
+                          <div className="flex justify-between text-sm">
+                            <span>Gold Stored:</span>
+                            <span className="font-bold text-yellow-600">
+                              {selectedBuilding.internalGold} / {selectedBuilding.internalGoldCapacity}
+                            </span>
+                          </div>
+                        )}
+                        {selectedBuilding.type === 'elixir_collector' && (
+                          <div className="flex justify-between text-sm">
+                            <span>Elixir Stored:</span>
+                            <span className="font-bold text-purple-600">
+                              {selectedBuilding.internalElixir} / {selectedBuilding.internalElixirCapacity}
+                            </span>
+                          </div>
+                        )}
+                        {(selectedBuilding.internalGold > 0 || selectedBuilding.internalElixir > 0) && (
+                          <Button
+                            onClick={async () => {
+                              try {
+                                setIsLoadingResources(true);
+                                const result = await resourcesApi.collectFromBuilding(selectedBuilding.id);
+                                updateResources(result.resources.gold, result.resources.elixir);
+                                await loadResources();
+                                await fetchVillage();
+                              } catch (error) {
+                                console.error('Failed to collect from building:', error);
+                              } finally {
+                                setIsLoadingResources(false);
+                              }
+                            }}
+                            variant="default"
+                            size="sm"
+                            className="w-full"
+                            disabled={isLoadingResources}
+                          >
+                            Collect
+                          </Button>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Storage-specific info (Gold Storage, Elixir Storage) */}
+                  {(selectedBuilding.type === 'gold_storage' || selectedBuilding.type === 'elixir_storage') && resources && (
+                    <div className="border-t pt-3 space-y-2">
+                      <p className="text-sm font-semibold text-muted-foreground">Capacity</p>
+                      {selectedBuilding.type === 'gold_storage' && (
+                        <div className="flex justify-between text-sm">
+                          <span>Gold Capacity:</span>
+                          <span className="font-bold text-yellow-600">
+                            {resources.gold} / {resources.capacity.gold}
+                          </span>
+                        </div>
+                      )}
+                      {selectedBuilding.type === 'elixir_storage' && (
+                        <div className="flex justify-between text-sm">
+                          <span>Elixir Capacity:</span>
+                          <span className="font-bold text-purple-600">
+                            {resources.elixir} / {resources.capacity.elixir}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Army Camp specific */}
+                  {selectedBuilding.type === 'army_camp' && (
+                    <div className="border-t pt-3">
+                      <Button
+                        onClick={() => setShowArmyTraining(true)}
+                        variant="default"
+                        size="sm"
+                        className="w-full"
+                      >
+                        <Users className="mr-2 h-4 w-4" />
+                        Train Troops
+                      </Button>
+                    </div>
+                  )}
+
                   {selectedBuilding.type !== 'town_hall' && (
                     <Button
                       onClick={handleDeleteBuilding}

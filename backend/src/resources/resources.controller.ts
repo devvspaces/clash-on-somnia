@@ -1,4 +1,4 @@
-import { Controller, Get, Post, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, UseGuards, Req, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { ResourcesService } from './resources.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -49,6 +49,22 @@ export class ResourcesController {
     return {
       message: 'Resources collected successfully',
       resources: updatedResources,
+    };
+  }
+
+  @Post('collect/:buildingId')
+  @ApiOperation({ summary: 'Collect resources from a specific building (smart collection)' })
+  @ApiResponse({ status: 200, description: 'Resources collected from building' })
+  @ApiResponse({ status: 404, description: 'Building or resources not found' })
+  @ApiResponse({ status: 400, description: 'Invalid building type or insufficient capacity' })
+  async collectFromBuilding(@Req() req, @Param('buildingId') buildingId: string) {
+    const result = await this.resourcesService.collectFromBuilding(req.user.userId, buildingId);
+
+    return {
+      message: `Collected ${result.collected.gold} gold and ${result.collected.elixir} elixir`,
+      building: result.building,
+      resources: result.resources,
+      collected: result.collected,
     };
   }
 }

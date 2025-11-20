@@ -10,6 +10,11 @@ export interface Building {
   health: number;
   maxHealth: number;
   isActive: boolean;
+  internalGold: number;
+  internalElixir: number;
+  internalGoldCapacity: number;
+  internalElixirCapacity: number;
+  lastCollectedAt: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -62,6 +67,18 @@ export const resourcesApi = {
     const response = await apiClient.post<{ message: string; resources: Resources }>(
       '/resources/collect',
     );
+    return response.data;
+  },
+
+  collectFromBuilding: async (
+    buildingId: string,
+  ): Promise<{
+    message: string;
+    building: Building;
+    resources: Resources;
+    collected: { gold: number; elixir: number };
+  }> => {
+    const response = await apiClient.post(`/resources/collect/${buildingId}`);
     return response.data;
   },
 };

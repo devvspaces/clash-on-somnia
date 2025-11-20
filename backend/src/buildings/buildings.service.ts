@@ -28,6 +28,7 @@ export class BuildingsService {
 
     // Add Gold Mines if they don't exist
     if (!hasGoldMine) {
+      const goldMineConfig = getBuildingConfig(BuildingType.GOLD_MINE);
       newBuildings.push(
         {
           villageId,
@@ -35,9 +36,14 @@ export class BuildingsService {
           level: 1,
           positionX: 10,
           positionY: 15,
-          health: getBuildingConfig(BuildingType.GOLD_MINE).maxHealth,
-          maxHealth: getBuildingConfig(BuildingType.GOLD_MINE).maxHealth,
+          health: goldMineConfig.maxHealth,
+          maxHealth: goldMineConfig.maxHealth,
           isActive: true,
+          internalGold: 0,
+          internalElixir: 0,
+          internalGoldCapacity: goldMineConfig.capacity || 0,
+          internalElixirCapacity: 0,
+          lastCollectedAt: new Date(Date.now() - 60 * 60 * 1000), // 1 hour ago for immediate resources
         },
         {
           villageId,
@@ -45,15 +51,21 @@ export class BuildingsService {
           level: 1,
           positionX: 10,
           positionY: 22,
-          health: getBuildingConfig(BuildingType.GOLD_MINE).maxHealth,
-          maxHealth: getBuildingConfig(BuildingType.GOLD_MINE).maxHealth,
+          health: goldMineConfig.maxHealth,
+          maxHealth: goldMineConfig.maxHealth,
           isActive: true,
+          internalGold: 0,
+          internalElixir: 0,
+          internalGoldCapacity: goldMineConfig.capacity || 0,
+          internalElixirCapacity: 0,
+          lastCollectedAt: new Date(Date.now() - 60 * 60 * 1000), // 1 hour ago for immediate resources
         },
       );
     }
 
     // Add Elixir Collectors if they don't exist
     if (!hasElixirCollector) {
+      const elixirCollectorConfig = getBuildingConfig(BuildingType.ELIXIR_COLLECTOR);
       newBuildings.push(
         {
           villageId,
@@ -61,9 +73,14 @@ export class BuildingsService {
           level: 1,
           positionX: 28,
           positionY: 15,
-          health: getBuildingConfig(BuildingType.ELIXIR_COLLECTOR).maxHealth,
-          maxHealth: getBuildingConfig(BuildingType.ELIXIR_COLLECTOR).maxHealth,
+          health: elixirCollectorConfig.maxHealth,
+          maxHealth: elixirCollectorConfig.maxHealth,
           isActive: true,
+          internalGold: 0,
+          internalElixir: 0,
+          internalGoldCapacity: 0,
+          internalElixirCapacity: elixirCollectorConfig.capacity || 0,
+          lastCollectedAt: new Date(Date.now() - 60 * 60 * 1000), // 1 hour ago for immediate resources
         },
         {
           villageId,
@@ -71,9 +88,14 @@ export class BuildingsService {
           level: 1,
           positionX: 28,
           positionY: 22,
-          health: getBuildingConfig(BuildingType.ELIXIR_COLLECTOR).maxHealth,
-          maxHealth: getBuildingConfig(BuildingType.ELIXIR_COLLECTOR).maxHealth,
+          health: elixirCollectorConfig.maxHealth,
+          maxHealth: elixirCollectorConfig.maxHealth,
           isActive: true,
+          internalGold: 0,
+          internalElixir: 0,
+          internalGoldCapacity: 0,
+          internalElixirCapacity: elixirCollectorConfig.capacity || 0,
+          lastCollectedAt: new Date(Date.now() - 60 * 60 * 1000), // 1 hour ago for immediate resources
         },
       );
     }
@@ -157,6 +179,15 @@ export class BuildingsService {
       })
       .where(eq(resources.villageId, villageId));
 
+    // Initialize internal storage capacities based on building type
+    let internalGoldCapacity = 0;
+    let internalElixirCapacity = 0;
+    if (buildingType === BuildingType.GOLD_MINE && config.capacity) {
+      internalGoldCapacity = config.capacity;
+    } else if (buildingType === BuildingType.ELIXIR_COLLECTOR && config.capacity) {
+      internalElixirCapacity = config.capacity;
+    }
+
     // Create the building
     const [newBuilding] = await this.db
       .insert(buildings)
@@ -169,6 +200,11 @@ export class BuildingsService {
         health: config.maxHealth,
         maxHealth: config.maxHealth,
         isActive: true,
+        internalGold: 0,
+        internalElixir: 0,
+        internalGoldCapacity,
+        internalElixirCapacity,
+        lastCollectedAt: new Date(),
       })
       .returning();
 
