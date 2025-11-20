@@ -145,8 +145,11 @@ export default function VillagePage() {
       await loadResources();
       await fetchVillage();
 
-      // Exit placement mode
-      setPlacementMode(null);
+      // For walls, stay in placement mode for continuous building
+      // For other buildings, exit placement mode
+      if (placementMode.buildingType !== BuildingType.WALL) {
+        setPlacementMode(null);
+      }
     } catch (error: any) {
       console.error('Failed to place building:', error);
       alert(error.response?.data?.message || 'Failed to place building');
