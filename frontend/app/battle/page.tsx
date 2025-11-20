@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Navbar } from '@/components/layout/Navbar';
 import { BattleBuilding, BattleSession, battlesApi } from '@/lib/api/battles';
+import { useAuthStore } from '@/lib/stores';
 import {
   connectBattleSocket,
   disconnectBattleSocket,
@@ -52,6 +53,7 @@ const CANVAS_HEIGHT = GRID_SIZE * TILE_SIZE;
 export default function BattlePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { isAuthenticated, user } = useAuthStore();
   const battleId = searchParams.get('battleId');
   const villageId = searchParams.get('villageId');
 
@@ -306,15 +308,18 @@ export default function BattlePage() {
   useEffect(() => {
     if (!battleSession || !villageId) return;
 
-    const token = localStorage.getItem('token');
+    // Get token from localStorage (stored as 'auth_token' by the auth store)
+    const token = localStorage.getItem('auth_token');
+
     if (!token) {
-      console.error('No token found - please log in again');
-      setBattleStatus('Authentication error - please refresh and try again');
-      router.push('/login');
+      console.error('No authentication token found');
+      setBattleStatus('Authentication error - please log in again');
+      setIsConnected(false);
+      setTimeout(() => router.push('/login'), 2000);
       return;
     }
 
-    console.log('Connecting to battle WebSocket...');
+    console.log('Connecting to battle WebSocket with token...');
     const socket = connectBattleSocket(token);
 
     // Wait for connection before joining battle
