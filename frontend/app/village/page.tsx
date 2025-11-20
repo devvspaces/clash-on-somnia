@@ -74,16 +74,7 @@ export default function VillagePage() {
     setIsLoadingResources(true);
     try {
       const response = await resourcesApi.collectResources();
-      console.log('Collected resources response:', response);
-      console.log('New gold:', response.resources.gold, 'New elixir:', response.resources.elixir);
-
-      // Update the village store with new resource values
       updateResources(response.resources.gold, response.resources.elixir);
-
-      // Also refetch village to ensure navbar shows updated values
-      await fetchVillage();
-
-      // Reload resources display
       await loadResources();
     } catch (error) {
       console.error('Failed to collect resources:', error);
