@@ -19,6 +19,7 @@ export const buildings = pgTable('buildings', {
   internalGoldCapacity: integer('internal_gold_capacity').default(0).notNull(),
   internalElixirCapacity: integer('internal_elixir_capacity').default(0).notNull(),
   lastCollectedAt: timestamp('last_collected_at').defaultNow().notNull(),
+  constructionCompletedAt: timestamp('construction_completed_at').defaultNow().notNull(), // When construction finishes
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

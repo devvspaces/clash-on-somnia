@@ -15,6 +15,7 @@ export interface Building {
   internalGoldCapacity: number;
   internalElixirCapacity: number;
   lastCollectedAt: string;
+  constructionCompletedAt: string;
   createdAt: string;
   updatedAt: string;
 }

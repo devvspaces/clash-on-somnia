@@ -264,6 +264,10 @@ export class BuildingsService {
       internalElixirCapacity = config.capacity;
     }
 
+    // Calculate construction completion time (buildTime is in seconds)
+    const now = new Date();
+    const constructionCompletedAt = new Date(now.getTime() + config.buildTime * 1000);
+
     // Create the building
     const [newBuilding] = await this.db
       .insert(buildings)
@@ -281,6 +285,7 @@ export class BuildingsService {
         internalGoldCapacity,
         internalElixirCapacity,
         lastCollectedAt: new Date(),
+        constructionCompletedAt,
       })
       .returning();
 

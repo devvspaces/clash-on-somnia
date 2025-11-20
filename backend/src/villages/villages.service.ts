@@ -208,6 +208,12 @@ export class VillagesService {
         continue;
       }
 
+      // Skip buildings that are still under construction
+      const constructionCompletedAt = new Date(building.constructionCompletedAt);
+      if (now < constructionCompletedAt) {
+        continue;
+      }
+
       const config = getBuildingConfig(building.type as BuildingType);
       if (!config.generationRate) continue;
 

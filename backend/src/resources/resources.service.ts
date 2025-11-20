@@ -1,5 +1,4 @@
 import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
 import { eq, and, or } from 'drizzle-orm';
 import { DATABASE_CONNECTION } from '../database/database.module';
 import { resources, buildings, villages, Resource } from '../database/schema';
@@ -321,11 +320,17 @@ export class ResourcesService {
       return;
     }
 
+    // Skip buildings that are still under construction
+    const now = new Date();
+    const constructionCompletedAt = new Date(building.constructionCompletedAt);
+    if (now < constructionCompletedAt) {
+      return;
+    }
+
     const config = getBuildingConfig(building.type as BuildingType);
     if (!config.generationRate) return;
 
     // Calculate time elapsed since last collection (in hours)
-    const now = new Date();
     const lastCollected = new Date(building.lastCollectedAt);
     const hoursElapsed = (now.getTime() - lastCollected.getTime()) / (1000 * 60 * 60);
 
@@ -366,75 +371,4 @@ export class ResourcesService {
     }
   }
 
-  // Background job to auto-update internal storage for collectors every hour
-  @Cron(CronExpression.EVERY_HOUR)
-  async autoUpdateCollectorStorage() {
-    console.log('Running auto-update collector storage job...');
-
-    // Get all collector buildings
-    const allCollectors = await this.db
-      .select()
-      .from(buildings)
-      .where(
-        or(
-          eq(buildings.type, BuildingType.GOLD_MINE),
-          eq(buildings.type, BuildingType.ELIXIR_COLLECTOR)
-        )
-      );
-
-    for (const collector of allCollectors) {
-      try {
-        await this.updateBuildingInternalStorage(collector.id);
-      } catch (error) {
-        console.error(`Error updating internal storage for building ${collector.id}:`, error);
-      }
-    }
-
-    console.log('Auto-update collector storage job completed');
-  }
-
-  // Background job to auto-collect resources every hour (DEPRECATED - keeping for backward compatibility)
-  @Cron(CronExpression.EVERY_HOUR)
-  async autoCollectResources() {
-    console.log('Running auto-collect resources job...');
-
-    // Get all villages
-    const allVillages = await this.db.select().from(villages);
-
-    for (const village of allVillages) {
-      try {
-        const currentResources = await this.getResourcesByVillageId(village.id);
-        if (!currentResources) continue;
-
-        // Calculate generated resources
-        const { generatedGold, generatedElixir } =
-          await this.calculateGeneratedResources(village.id);
-
-        // Only update if there are generated resources
-        if (generatedGold > 0 || generatedElixir > 0) {
-          const { maxGold, maxElixir } = await this.getStorageCapacities(village.id);
-
-          const newGold = Math.min(currentResources.gold + generatedGold, maxGold);
-          const newElixir = Math.min(currentResources.elixir + generatedElixir, maxElixir);
-
-          await this.db
-            .update(resources)
-            .set({
-              gold: newGold,
-              elixir: newElixir,
-              updatedAt: new Date(),
-            })
-            .where(eq(resources.villageId, village.id));
-
-          console.log(
-            `Auto-collected for village ${village.id}: +${generatedGold} gold, +${generatedElixir} elixir`,
-          );
-        }
-      } catch (error) {
-        console.error(`Error auto-collecting for village ${village.id}:`, error);
-      }
-    }
-
-    console.log('Auto-collect resources job completed');
-  }
 }

@@ -489,7 +489,7 @@ export class BattlesService {
   }
 
   /**
-   * Start a real-time battle session (Phase 6)
+   * Start a real-time battle session
    * Creates a battle session for interactive troop deployment
    */
   async startBattle(

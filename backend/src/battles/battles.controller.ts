@@ -66,7 +66,7 @@ export class BattlesController {
 
   /**
    * POST /battles/start
-   * Start a real-time battle session (Phase 6)
+   * Start a real-time battle session
    */
   @Post('start')
   async startBattle(@Request() req, @Body() body: { defenderId: string; troops: { type: TroopType; count: number }[] }) {

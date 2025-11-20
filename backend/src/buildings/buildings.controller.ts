@@ -17,7 +17,7 @@ export class BuildingsController {
 
   @Post('add-starter-buildings')
   @ApiOperation({
-    summary: 'Add starter buildings to current village (migration helper for Phase 1 users)',
+    summary: 'Add starter buildings to current village (migration helper)',
   })
   @ApiResponse({ status: 200, description: 'Starter buildings added' })
   async addStarterBuildings(@Req() req) {

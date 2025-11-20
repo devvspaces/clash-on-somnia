@@ -327,7 +327,7 @@ export default function ArmyPage() {
       <Card className="bg-muted/50">
         <CardContent className="pt-6">
           <p className="text-center text-sm text-muted-foreground">
-            Phase 4 Complete! 🎉 Train troops, manage your army, and prepare for battle!
+            Train troops, manage your army, and prepare for battle!
           </p>
         </CardContent>
       </Card>
