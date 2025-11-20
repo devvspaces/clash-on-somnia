@@ -476,6 +476,55 @@ export class BattlesService {
   }
 
   /**
+   * Get all recent battles (public, no auth required)
+   * Used for landing page spectator view
+   */
+  async getAllRecentBattles(limit: number = 50) {
+    const battlesData = await this.db
+      .select({
+        id: battles.id,
+        attackerId: battles.attackerId,
+        defenderId: battles.defenderId,
+        attackerTroops: battles.attackerTroops,
+        destructionPercentage: battles.destructionPercentage,
+        stars: battles.stars,
+        lootGold: battles.lootGold,
+        lootElixir: battles.lootElixir,
+        status: battles.status,
+        createdAt: battles.createdAt,
+        attackerVillage: {
+          id: villages.id,
+          name: villages.name,
+        },
+      })
+      .from(battles)
+      .leftJoin(villages, eq(battles.attackerId, villages.id))
+      .orderBy(desc(battles.createdAt))
+      .limit(limit);
+
+    // Fetch defender village names separately
+    const result = await Promise.all(
+      battlesData.map(async (battle) => {
+        const [defenderVillage] = await this.db
+          .select({
+            id: villages.id,
+            name: villages.name,
+          })
+          .from(villages)
+          .where(eq(villages.id, battle.defenderId))
+          .limit(1);
+
+        return {
+          ...battle,
+          defenderVillage: defenderVillage || { id: battle.defenderId, name: 'Unknown' },
+        };
+      })
+    );
+
+    return result;
+  }
+
+  /**
    * Get a single battle by ID
    */
   async getBattleById(battleId: string): Promise<Battle | null> {

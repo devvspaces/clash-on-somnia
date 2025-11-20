@@ -45,7 +45,36 @@ export interface BattleSession {
   };
 }
 
+export interface PublicBattle {
+  id: string;
+  attackerVillage: {
+    id: string;
+    name: string;
+  };
+  defenderVillage: {
+    id: string;
+    name: string;
+  };
+  attackerTroops: { type: string; count: number }[];
+  destructionPercentage: number;
+  stars: number;
+  lootGold: number;
+  lootElixir: number;
+  status: string;
+  createdAt: string;
+}
+
 export const battlesApi = {
+  /**
+   * Get recent battles (public, no auth required)
+   */
+  getRecentBattles: async (limit: number = 50): Promise<{ battles: PublicBattle[] }> => {
+    const response = await apiClient.get('/battles/public/recent', {
+      params: { limit },
+    });
+    return response.data;
+  },
+
   /**
    * Find a random opponent to attack
    */
