@@ -10,6 +10,7 @@ import { army } from '../database/schema/army.schema';
 import { BuildingType, getBuildingConfig } from '../common/config/buildings.config';
 import { TroopType, getTroopConfig, TroopStats } from '../common/config/troops.config';
 import { DATABASE_CONNECTION } from '../database/database.module';
+import { BattleSessionManager } from './battle-session.manager';
 
 // Battle event types for replay
 interface BattleEvent {
@@ -61,6 +62,7 @@ export class BattlesService {
   constructor(
     @Inject(DATABASE_CONNECTION)
     private db: NodePgDatabase<typeof schema>,
+    private battleSessionManager: BattleSessionManager,
   ) {}
 
   /**
@@ -481,6 +483,84 @@ export class BattlesService {
       .limit(1);
 
     return battle || null;
+  }
+
+  /**
+   * Start a real-time battle session (Phase 6)
+   * Creates a battle session for interactive troop deployment
+   */
+  async startBattle(
+    attackerId: string,
+    attackerVillageId: string,
+    defenderVillageId: string,
+    maxTroops: { type: TroopType; count: number }[],
+  ) {
+    console.log('Starting real-time battle:', { attackerId, attackerVillageId, defenderVillageId });
+
+    // Get defender's village to find defender user
+    const defenderVillage = await this.db
+      .select()
+      .from(villages)
+      .where(eq(villages.id, defenderVillageId))
+      .limit(1);
+
+    if (!defenderVillage || defenderVillage.length === 0) {
+      throw new Error('Defender village not found');
+    }
+
+    const defenderId = defenderVillage[0].userId;
+
+    // Load defender's buildings with their configs
+    const defenderBuildings = await this.db
+      .select()
+      .from(buildings)
+      .where(eq(buildings.villageId, defenderVillageId));
+
+    // Attach building configs to buildings
+    const buildingsWithConfigs = defenderBuildings.map((b) => ({
+      ...b,
+      config: getBuildingConfig(b.type as BuildingType),
+    }));
+
+    // Calculate total troop count
+    const totalTroopCount = maxTroops.reduce((sum, t) => sum + t.count, 0);
+
+    // Create battle record
+    const newBattle: NewBattle = {
+      attackerId: attackerVillageId,
+      defenderId: defenderVillageId,
+      attackerTroops: maxTroops,
+      status: 'active',
+    };
+
+    const [battleRecord] = await this.db.insert(battles).values(newBattle).returning();
+
+    // Create battle session
+    const session = this.battleSessionManager.createSession(
+      battleRecord.id,
+      attackerId,
+      attackerVillageId,
+      defenderId,
+      defenderVillageId,
+      buildingsWithConfigs,
+      totalTroopCount,
+    );
+
+    return {
+      battleId: battleRecord.id,
+      session: {
+        id: session.id,
+        status: session.status,
+        buildings: session.buildings.map((b) => ({
+          id: b.id,
+          type: b.type,
+          position: b.position,
+          health: b.health,
+          maxHealth: b.maxHealth,
+        })),
+        maxTroops: session.maxTroops,
+      },
+    };
   }
 
   /**

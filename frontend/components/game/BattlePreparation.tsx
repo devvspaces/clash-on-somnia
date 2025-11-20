@@ -1,26 +1,28 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { battlesApi, OpponentVillage } from '@/lib/api/battles';
+import { battlesApi, OpponentVillage, BattleSession } from '@/lib/api/battles';
 import { troopsApi, ArmyTroop } from '@/lib/api/troops';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Swords, AlertCircle, CheckCircle, Users, Target } from 'lucide-react';
+import { Loader2, Swords, AlertCircle, CheckCircle, Users, Target, Gamepad2 } from 'lucide-react';
 
 interface BattlePreparationProps {
   onBattleComplete: (battleResult: any) => void;
+  onStartRealtimeBattle?: (battleSession: BattleSession, troops: { type: string; count: number }[]) => void;
   onCancel: () => void;
 }
 
-export function BattlePreparation({ onBattleComplete, onCancel }: BattlePreparationProps) {
+export function BattlePreparation({ onBattleComplete, onStartRealtimeBattle, onCancel }: BattlePreparationProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [opponent, setOpponent] = useState<OpponentVillage | null>(null);
   const [army, setArmy] = useState<ArmyTroop[]>([]);
   const [selectedTroops, setSelectedTroops] = useState<{ type: string; count: number }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isAttacking, setIsAttacking] = useState(false);
+  const [battleMode, setBattleMode] = useState<'instant' | 'realtime'>('realtime'); // Default to Phase 6
 
   useEffect(() => {
     loadData();
@@ -98,10 +100,15 @@ export function BattlePreparation({ onBattleComplete, onCancel }: BattlePreparat
       setIsAttacking(true);
       setError(null);
 
-      const result = await battlesApi.attack(opponent.opponentVillageId, selectedTroops);
-
-      // Show result
-      onBattleComplete(result.battle);
+      if (battleMode === 'realtime' && onStartRealtimeBattle) {
+        // Phase 6: Start real-time battle session
+        const battleSession = await battlesApi.startBattle(opponent.opponentVillageId, selectedTroops);
+        onStartRealtimeBattle(battleSession, selectedTroops);
+      } else {
+        // Phase 5: Instant simulation
+        const result = await battlesApi.attack(opponent.opponentVillageId, selectedTroops);
+        onBattleComplete(result.battle);
+      }
     } catch (err: any) {
       console.error('Attack failed:', err);
       setError(err.response?.data?.message || 'Attack failed');
@@ -255,6 +262,40 @@ export function BattlePreparation({ onBattleComplete, onCancel }: BattlePreparat
         </CardContent>
       </Card>
 
+      {/* Battle Mode Selector */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Battle Mode</CardTitle>
+          <CardDescription>Choose how you want to attack</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4">
+            <Button
+              variant={battleMode === 'realtime' ? 'default' : 'outline'}
+              className="h-auto py-4 flex flex-col gap-2"
+              onClick={() => setBattleMode('realtime')}
+            >
+              <Gamepad2 className="h-6 w-6" />
+              <div>
+                <p className="font-semibold">Real-Time Battle</p>
+                <p className="text-xs text-muted-foreground">Deploy troops and watch them fight</p>
+              </div>
+            </Button>
+            <Button
+              variant={battleMode === 'instant' ? 'default' : 'outline'}
+              className="h-auto py-4 flex flex-col gap-2"
+              onClick={() => setBattleMode('instant')}
+            >
+              <Swords className="h-6 w-6" />
+              <div>
+                <p className="font-semibold">Instant Simulation</p>
+                <p className="text-xs text-muted-foreground">Quick auto-battle simulation</p>
+              </div>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Attack Button */}
       <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
         <div>
@@ -262,7 +303,7 @@ export function BattlePreparation({ onBattleComplete, onCancel }: BattlePreparat
           <p className="text-sm text-muted-foreground">
             {selectedTroops.length === 0
               ? 'Select troops to begin the attack'
-              : `${getTotalSelectedTroops()} troops selected`}
+              : `${getTotalSelectedTroops()} troops selected for ${battleMode === 'realtime' ? 'real-time' : 'instant'} battle`}
           </p>
         </div>
         <Button
@@ -274,12 +315,12 @@ export function BattlePreparation({ onBattleComplete, onCancel }: BattlePreparat
           {isAttacking ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Attacking...
+              {battleMode === 'realtime' ? 'Starting...' : 'Attacking...'}
             </>
           ) : (
             <>
-              <Swords className="mr-2 h-4 w-4" />
-              Attack!
+              {battleMode === 'realtime' ? <Gamepad2 className="mr-2 h-4 w-4" /> : <Swords className="mr-2 h-4 w-4" />}
+              {battleMode === 'realtime' ? 'Start Battle' : 'Attack!'}
             </>
           )}
         </Button>

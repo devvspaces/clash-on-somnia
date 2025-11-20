@@ -65,6 +65,47 @@ export class BattlesController {
   }
 
   /**
+   * POST /battles/start
+   * Start a real-time battle session (Phase 6)
+   */
+  @Post('start')
+  async startBattle(@Request() req, @Body() body: { defenderId: string; troops: { type: TroopType; count: number }[] }) {
+    const userId = req.user.userId;
+    const attackerVillageId = req.user.villageId;
+
+    console.log('Starting battle:', { userId, attackerVillageId, defenderId: body.defenderId });
+
+    if (!body.defenderId || !body.troops || body.troops.length === 0) {
+      throw new BadRequestException('Invalid battle data: defenderId and troops are required');
+    }
+
+    // Validate troop types
+    for (const troop of body.troops) {
+      if (!Object.values(TroopType).includes(troop.type)) {
+        throw new BadRequestException(`Invalid troop type: ${troop.type}`);
+      }
+      if (troop.count <= 0) {
+        throw new BadRequestException(`Troop count must be positive: ${troop.type}`);
+      }
+    }
+
+    // TODO: Validate that attacker has these troops available
+    // TODO: Deduct troops from attacker's army
+
+    const result = await this.battlesService.startBattle(
+      userId,
+      attackerVillageId,
+      body.defenderId,
+      body.troops,
+    );
+
+    return {
+      message: 'Battle session created',
+      ...result,
+    };
+  }
+
+  /**
    * GET /battles/find-opponent
    * Find a random opponent to attack
    */

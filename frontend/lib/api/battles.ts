@@ -27,6 +27,24 @@ export interface OpponentVillage {
   message: string;
 }
 
+export interface BattleBuilding {
+  id: string;
+  type: string;
+  position: { x: number; y: number };
+  health: number;
+  maxHealth: number;
+}
+
+export interface BattleSession {
+  battleId: string;
+  session: {
+    id: string;
+    status: string;
+    buildings: BattleBuilding[];
+    maxTroops: number;
+  };
+}
+
 export const battlesApi = {
   /**
    * Find a random opponent to attack
@@ -37,7 +55,21 @@ export const battlesApi = {
   },
 
   /**
-   * Execute an attack against an opponent
+   * Start a real-time battle session (Phase 6)
+   */
+  startBattle: async (
+    defenderId: string,
+    troops: { type: string; count: number }[],
+  ): Promise<BattleSession> => {
+    const response = await apiClient.post('/battles/start', {
+      defenderId,
+      troops,
+    });
+    return response.data;
+  },
+
+  /**
+   * Execute an attack against an opponent (Phase 5 instant simulation)
    */
   attack: async (
     defenderId: string,

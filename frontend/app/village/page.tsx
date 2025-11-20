@@ -10,10 +10,12 @@ import { BuildingShop } from '@/components/game/BuildingShop';
 import { ArmyTraining } from '@/components/game/ArmyTraining';
 import { BattlePreparation } from '@/components/game/BattlePreparation';
 import { BattleResult } from '@/components/game/BattleResult';
+import { BattleDeployment } from '@/components/game/BattleDeployment';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Building2, Users, Swords, Info, Plus, Trash2, History } from 'lucide-react';
 import { resourcesApi, buildingsApi, Building, ResourcesWithPending } from '@/lib/api';
+import { BattleSession } from '@/lib/api/battles';
 import { getBuildingVisual } from '@/lib/config/buildings';
 import { BuildingType } from '@/lib/config/buildingsData';
 
@@ -28,6 +30,8 @@ export default function VillagePage() {
   const [showArmyTraining, setShowArmyTraining] = useState(false);
   const [showBattlePrep, setShowBattlePrep] = useState(false);
   const [battleResult, setBattleResult] = useState<any>(null);
+  const [battleSession, setBattleSession] = useState<BattleSession | null>(null);
+  const [battleTroops, setBattleTroops] = useState<{ type: string; count: number }[]>([]);
   const [placementMode, setPlacementMode] = useState<{
     active: boolean;
     buildingType: BuildingType;
@@ -153,6 +157,12 @@ export default function VillagePage() {
     }
   };
 
+  const handleStartRealtimeBattle = (session: BattleSession, troops: { type: string; count: number }[]) => {
+    setShowBattlePrep(false);
+    setBattleSession(session);
+    setBattleTroops(troops);
+  };
+
   const handleBattleComplete = (result: any) => {
     setShowBattlePrep(false);
     setBattleResult(result);
@@ -160,8 +170,21 @@ export default function VillagePage() {
     loadResources();
   };
 
+  const handleRealtimeBattleEnd = (result: any) => {
+    setBattleSession(null);
+    setBattleTroops([]);
+    setBattleResult(result);
+    // Refresh resources to show looted resources
+    loadResources();
+  };
+
   const handleCloseBattleResult = () => {
     setBattleResult(null);
+  };
+
+  const handleCancelRealtimeBattle = () => {
+    setBattleSession(null);
+    setBattleTroops([]);
   };
 
   if (authLoading || villageLoading) {
@@ -196,11 +219,20 @@ export default function VillagePage() {
       <div className="container mx-auto p-6">
         {showArmyTraining ? (
           <ArmyTraining onClose={() => setShowArmyTraining(false)} />
+        ) : battleSession ? (
+          <BattleDeployment
+            battleSession={battleSession}
+            troops={battleTroops}
+            userVillageId={village.id}
+            onBattleEnd={handleRealtimeBattleEnd}
+            onCancel={handleCancelRealtimeBattle}
+          />
         ) : battleResult ? (
           <BattleResult result={battleResult} onClose={handleCloseBattleResult} />
         ) : showBattlePrep ? (
           <BattlePreparation
             onBattleComplete={handleBattleComplete}
+            onStartRealtimeBattle={handleStartRealtimeBattle}
             onCancel={() => setShowBattlePrep(false)}
           />
         ) : (
