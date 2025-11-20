@@ -265,13 +265,63 @@ export default function BattlePage() {
     return healthBar;
   };
 
+  // Define battle event handlers
+  const handleBattleEvent = useCallback((event: BattleEvent) => {
+    console.log('📡 Battle event received:', event.type, event.data);
+
+    switch (event.type) {
+      case 'TROOP_SPAWN':
+        console.log('Handling TROOP_SPAWN:', event.data);
+        handleTroopSpawn(event.data);
+        break;
+      case 'TROOP_MOVE':
+        console.log('Handling TROOP_MOVE');
+        handleTroopMove(event.data);
+        break;
+      case 'TROOP_ATTACK':
+        console.log('Handling TROOP_ATTACK');
+        handleTroopAttacked(event.data);
+        break;
+      case 'TROOP_DEATH':
+        console.log('Handling TROOP_DEATH');
+        handleTroopDeath(event.data);
+        break;
+      case 'BUILDING_ATTACK':
+        console.log('Handling BUILDING_ATTACK');
+        handleBuildingAttack(event.data);
+        break;
+      case 'BUILDING_DESTROYED':
+        console.log('Handling BUILDING_DESTROYED');
+        handleBuildingDestroyed(event.data);
+        break;
+      default:
+        console.log('Unknown event type:', event.type);
+    }
+  }, []);
+
+  const handleBattleEndEvent = useCallback((result: any) => {
+    console.log('Battle ended:', result);
+    setBattleStatus(`Battle Over! ${result.stars} Stars - ${result.destructionPercentage}% Destruction`);
+    setDestructionPercentage(result.destructionPercentage);
+
+    setTimeout(() => {
+      router.push(`/village?battleResult=${encodeURIComponent(JSON.stringify(result))}`);
+    }, 3000);
+  }, [router]);
+
   // Handle canvas click for troop deployment
   const handleCanvasClick = useCallback(
     (event: any) => {
-      if (!selectedTroopType || !battleSession) return;
+      if (!selectedTroopType || !battleSession) {
+        console.log('Cannot deploy: no troop selected or no battle session');
+        return;
+      }
 
       const troopConfig = troops.find((t: any) => t.type === selectedTroopType);
-      if (!troopConfig) return;
+      if (!troopConfig) {
+        console.log('Troop config not found for:', selectedTroopType);
+        return;
+      }
 
       const deployed = deployedCounts[selectedTroopType] || 0;
       if (deployed >= troopConfig.count) {
@@ -285,20 +335,24 @@ export default function BattlePage() {
 
       console.log('Deploying troop:', { battleId: battleSession.battleId, troopType: selectedTroopType, position: { x: gridX, y: gridY } });
 
+      // Capture troop type in local variable to avoid closure issue
+      const troopTypeToDepl = selectedTroopType;
+
       // Deploy troop via WebSocket
-      deployTroop(battleSession.battleId, selectedTroopType, { x: gridX, y: gridY })
+      deployTroop(battleSession.battleId, troopTypeToDepl, { x: gridX, y: gridY })
         .then((response) => {
+          console.log('Troop deploy response:', response);
           setDeployedCounts((prev) => ({
             ...prev,
-            [selectedTroopType]: (prev[selectedTroopType] || 0) + 1,
+            [troopTypeToDepl]: (prev[troopTypeToDepl] || 0) + 1,
           }));
 
           setBattleStarted(true);
-          setBattleStatus(`Deployed ${selectedTroopType} at (${gridX}, ${gridY})`);
+          setBattleStatus(`Deployed ${troopTypeToDepl} at (${gridX}, ${gridY})`);
         })
         .catch((error) => {
           console.error('Failed to deploy troop:', error);
-          setBattleStatus(`Failed to deploy ${selectedTroopType}`);
+          setBattleStatus(`Failed to deploy ${troopTypeToDepl}`);
         });
     },
     [selectedTroopType, battleSession, troops, deployedCounts]
@@ -336,6 +390,12 @@ export default function BattlePage() {
       setBattleStatus('Click on the map to deploy your selected troop!');
       clearTimeout(connectionTimeout);
 
+      // Register event handlers after socket connects
+      console.log('Registering battle event handlers...');
+      onBattleEvent(handleBattleEvent);
+      onBattleEnd(handleBattleEndEvent);
+      console.log('Event handlers registered!');
+
       // Join battle room after connection is established
       joinBattle(battleSession.battleId, villageId)
         .then(() => {
@@ -365,57 +425,18 @@ export default function BattlePage() {
       leaveBattle().catch(console.error);
       disconnectBattleSocket();
     };
-  }, [battleSession, villageId, router]);
-
-  // Listen to battle events
-  useEffect(() => {
-    const handleBattleEvent = (event: BattleEvent) => {
-      console.log('Battle event:', event);
-
-      switch (event.type) {
-        case 'TROOP_SPAWN':
-          handleTroopSpawn(event.data);
-          break;
-        case 'TROOP_MOVE':
-          handleTroopMove(event.data);
-          break;
-        case 'TROOP_ATTACK':
-          handleTroopAttacked(event.data);
-          break;
-        case 'TROOP_DEATH':
-          handleTroopDeath(event.data);
-          break;
-        case 'BUILDING_ATTACK':
-          handleBuildingAttack(event.data);
-          break;
-        case 'BUILDING_DESTROYED':
-          handleBuildingDestroyed(event.data);
-          break;
-      }
-    };
-
-    const handleBattleEndEvent = (result: any) => {
-      console.log('Battle ended:', result);
-      setBattleStatus(`Battle Over! ${result.stars} Stars - ${result.destructionPercentage}% Destruction`);
-      setDestructionPercentage(result.destructionPercentage);
-
-      setTimeout(() => {
-        router.push(`/village?battleResult=${encodeURIComponent(JSON.stringify(result))}`);
-      }, 3000);
-    };
-
-    onBattleEvent(handleBattleEvent);
-    onBattleEnd(handleBattleEndEvent);
-
-    return () => {
-      offBattleEvent(handleBattleEvent);
-      offBattleEnd(handleBattleEndEvent);
-    };
-  }, [router]);
+  }, [battleSession, villageId, router, handleBattleEvent, handleBattleEndEvent]);
 
   // Handle troop spawn event
   const handleTroopSpawn = (data: any) => {
-    if (!troopsLayerRef.current) return;
+    console.log('🎖️ handleTroopSpawn called with data:', data);
+
+    if (!troopsLayerRef.current) {
+      console.error('❌ troopsLayerRef.current is null!');
+      return;
+    }
+
+    console.log('✅ troopsLayerRef exists, creating troop sprite...');
 
     const troopContainer = new Container();
 
@@ -432,14 +453,19 @@ export default function BattlePage() {
     troopContainer.addChild(sprite);
 
     // Position troop
-    troopContainer.position.set(data.position.x * TILE_SIZE + TILE_SIZE / 2, data.position.y * TILE_SIZE + TILE_SIZE / 2);
+    const pixelX = data.position.x * TILE_SIZE + TILE_SIZE / 2;
+    const pixelY = data.position.y * TILE_SIZE + TILE_SIZE / 2;
+    troopContainer.position.set(pixelX, pixelY);
+    console.log(`📍 Positioned troop at grid (${data.position.x}, ${data.position.y}) = pixel (${pixelX}, ${pixelY})`);
 
     troopsLayerRef.current.addChild(troopContainer);
+    console.log('✅ Added troop container to troops layer');
 
     // Create health bar
     const healthBar = createHealthBar(data.health, data.health, TILE_SIZE);
     healthBar.position.set(data.position.x * TILE_SIZE, (data.position.y - 0.3) * TILE_SIZE);
     troopsLayerRef.current.addChild(healthBar);
+    console.log('✅ Added health bar');
 
     troopSpritesRef.current.set(data.troopId, {
       id: data.troopId,
@@ -450,6 +476,8 @@ export default function BattlePage() {
       maxHealth: data.health,
       healthBar,
     });
+
+    console.log(`✅ Troop ${data.troopId} fully spawned! Total troops: ${troopSpritesRef.current.size}`);
   };
 
   // Get troop color based on type

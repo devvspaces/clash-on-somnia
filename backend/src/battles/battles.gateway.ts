@@ -187,6 +187,8 @@ export class BattlesGateway implements OnGatewayConnection, OnGatewayDisconnect 
    * Broadcast a battle event to all clients in a battle room
    */
   broadcastBattleEvent(battleId: string, event: BattleEvent) {
+    const roomSize = this.battleRooms.get(battleId)?.size || 0;
+    console.log(`Broadcasting ${event.type} to battle ${battleId} (${roomSize} clients in room)`);
     this.server.to(battleId).emit('battleEvent', event);
   }
 
