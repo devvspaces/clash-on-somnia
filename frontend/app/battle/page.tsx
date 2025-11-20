@@ -67,8 +67,9 @@ export default function BattlePage() {
   const [deployedCounts, setDeployedCounts] = useState<Record<string, number>>({});
   const [battleStarted, setBattleStarted] = useState(false);
   const [destructionPercentage, setDestructionPercentage] = useState(0);
-  const [battleStatus, setBattleStatus] = useState<string>('Deploy your troops!');
+  const [battleStatus, setBattleStatus] = useState<string>('Connecting to battle server...');
   const [isLoading, setIsLoading] = useState(true);
+  const [isConnected, setIsConnected] = useState(false);
 
   // Store sprites
   const buildingSpritesRef = useRef<Map<string, BuildingSprite>>(new Map());
@@ -307,26 +308,59 @@ export default function BattlePage() {
 
     const token = localStorage.getItem('token');
     if (!token) {
-      console.error('No token found');
+      console.error('No token found - please log in again');
+      setBattleStatus('Authentication error - please refresh and try again');
+      router.push('/login');
       return;
     }
 
+    console.log('Connecting to battle WebSocket...');
     const socket = connectBattleSocket(token);
 
-    // Join battle room
-    joinBattle(battleSession.battleId, villageId)
-      .then(() => {
-        console.log('Joined battle room');
-      })
-      .catch((error) => {
-        console.error('Failed to join battle:', error);
-      });
+    // Wait for connection before joining battle
+    const connectionTimeout = setTimeout(() => {
+      if (!socket.connected) {
+        console.error('WebSocket connection timeout');
+        setBattleStatus('Connection failed - retrying...');
+      }
+    }, 5000);
+
+    socket.on('connect', () => {
+      console.log('WebSocket connected! Joining battle room...');
+      setIsConnected(true);
+      setBattleStatus('Click on the map to deploy your selected troop!');
+      clearTimeout(connectionTimeout);
+
+      // Join battle room after connection is established
+      joinBattle(battleSession.battleId, villageId)
+        .then(() => {
+          console.log('Successfully joined battle room');
+          setBattleStatus('Ready! Click on the map to deploy troops!');
+        })
+        .catch((error) => {
+          console.error('Failed to join battle:', error);
+          setBattleStatus('Failed to join battle - please refresh');
+        });
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('WebSocket connection error:', error);
+      setIsConnected(false);
+      setBattleStatus('Connection error - check if backend is running');
+    });
+
+    socket.on('disconnect', () => {
+      console.log('WebSocket disconnected');
+      setIsConnected(false);
+      setBattleStatus('Disconnected from battle server');
+    });
 
     return () => {
+      clearTimeout(connectionTimeout);
       leaveBattle().catch(console.error);
       disconnectBattleSocket();
     };
-  }, [battleSession, villageId]);
+  }, [battleSession, villageId, router]);
 
   // Listen to battle events
   useEffect(() => {
@@ -619,14 +653,27 @@ export default function BattlePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Controls */}
           <div className="space-y-4">
+            {/* Connection Status */}
+            <Card className={`p-4 ${isConnected ? 'bg-green-50 dark:bg-green-950 border-green-500' : 'bg-yellow-50 dark:bg-yellow-950 border-yellow-500'}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`} />
+                <h3 className="font-bold text-sm">
+                  {isConnected ? 'Connected to Battle Server' : 'Connecting...'}
+                </h3>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {isConnected ? 'Ready to deploy troops!' : 'Please wait...'}
+              </p>
+            </Card>
+
             {/* Battle Info */}
             <Card className="p-4">
               <h3 className="font-bold text-lg mb-2">Battle Status</h3>
-              <p className="text-sm text-muted-foreground mb-2">{battleStatus}</p>
+              <p className="text-sm mb-2">{battleStatus}</p>
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span>Destruction:</span>
-                  <span className="font-bold">{destructionPercentage}%</span>
+                  <span className="font-bold text-red-600">{destructionPercentage}%</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span>Battle ID:</span>
@@ -666,17 +713,34 @@ export default function BattlePage() {
             </Card>
 
             {/* Instructions */}
-            <Card className="p-4 bg-blue-50 dark:bg-blue-950">
-              <h3 className="font-bold text-sm mb-2 flex items-center gap-2">
-                <Shield className="w-4 h-4" />
-                How to Play
+            <Card className="p-4 bg-blue-50 dark:bg-blue-950 border-2 border-blue-500">
+              <h3 className="font-bold text-base mb-3 flex items-center gap-2 text-blue-900 dark:text-blue-100">
+                <Shield className="w-5 h-5" />
+                How to Deploy Troops
               </h3>
-              <ul className="text-xs space-y-1 text-muted-foreground">
-                <li>1. Select a troop type</li>
-                <li>2. Click on the map to deploy</li>
-                <li>3. Watch your troops attack!</li>
-                <li>4. Destroy 50%+ for victory</li>
+              <ul className="text-sm space-y-2">
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-blue-600 dark:text-blue-400">1.</span>
+                  <span>Select a troop type from above</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-blue-600 dark:text-blue-400">2.</span>
+                  <span><strong>Click anywhere</strong> on the green map to deploy</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-blue-600 dark:text-blue-400">3.</span>
+                  <span>Troops will automatically move and attack!</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="font-bold text-blue-600 dark:text-blue-400">4.</span>
+                  <span>Destroy 50%+ of buildings to win!</span>
+                </li>
               </ul>
+              {selectedTroopType && (
+                <div className="mt-3 p-2 bg-blue-100 dark:bg-blue-900 rounded text-xs font-semibold text-center">
+                  🎯 {selectedTroopType} selected - Click the map!
+                </div>
+              )}
             </Card>
           </div>
 
@@ -686,8 +750,9 @@ export default function BattlePage() {
               <div className="flex justify-center">
                 <div
                   ref={canvasRef}
-                  className="border-4 border-slate-700 rounded shadow-2xl"
+                  className={`border-4 border-slate-700 rounded shadow-2xl ${selectedTroopType && isConnected ? 'cursor-crosshair' : 'cursor-wait'}`}
                   style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT }}
+                  title={selectedTroopType ? `Click to deploy ${selectedTroopType}` : 'Select a troop first'}
                 />
               </div>
             </Card>

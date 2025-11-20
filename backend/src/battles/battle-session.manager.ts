@@ -148,11 +148,11 @@ export class BattleSessionManager {
     return buildings.map((b) => ({
       id: b.id,
       type: b.type,
-      position: { x: b.x, y: b.y },
-      width: b.width || 2,
-      height: b.height || 2,
-      health: b.health || b.config?.health || 1000,
-      maxHealth: b.health || b.config?.health || 1000,
+      position: { x: b.positionX || b.x || 0, y: b.positionY || b.y || 0 }, // Handle both positionX/Y and x/y
+      width: b.width || b.config?.size?.width || 2,
+      height: b.height || b.config?.size?.height || 2,
+      health: b.config?.maxHealth || b.health || 1000,
+      maxHealth: b.config?.maxHealth || b.health || 1000,
       isDestroyed: false,
       isDefense: !!b.config?.defense,
       defense: b.config?.defense
