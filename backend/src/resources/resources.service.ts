@@ -1,6 +1,6 @@
 import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { eq } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 import { DATABASE_CONNECTION } from '../database/database.module';
 import { resources, buildings, villages, Resource } from '../database/schema';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
