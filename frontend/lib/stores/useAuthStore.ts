@@ -25,6 +25,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async (identifier: string, password: string) => {
     try {
       set({ isLoading: true, error: null });
+      // Clear village store before login to prevent showing wrong account
+      useVillageStore.getState().reset();
       const response = await authApi.login({ identifier, password });
       localStorage.setItem('auth_token', response.accessToken);
       set({
@@ -49,6 +51,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   register: async (username: string, email: string, password: string) => {
     try {
       set({ isLoading: true, error: null });
+      // Clear village store before registration
+      useVillageStore.getState().reset();
       const response = await authApi.register({ username, email, password });
       localStorage.setItem('auth_token', response.accessToken);
       set({

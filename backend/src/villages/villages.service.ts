@@ -170,6 +170,9 @@ export class VillagesService {
       throw new NotFoundException('Village not found');
     }
 
+    // Update all collectors' internal storage before returning
+    await this.updateAllCollectors(village.id);
+
     // Get resources
     const [villageResources] = await this.db
       .select()
@@ -188,5 +191,65 @@ export class VillagesService {
       resources: villageResources,
       buildings: villageBuildings,
     };
+  }
+
+  private async updateAllCollectors(villageId: string): Promise<void> {
+    // Get all collector buildings
+    const collectors = await this.db
+      .select()
+      .from(buildings)
+      .where(eq(buildings.villageId, villageId));
+
+    const now = new Date();
+
+    for (const building of collectors) {
+      // Only process gold mines and elixir collectors
+      if (building.type !== BuildingType.GOLD_MINE && building.type !== BuildingType.ELIXIR_COLLECTOR) {
+        continue;
+      }
+
+      const config = getBuildingConfig(building.type as BuildingType);
+      if (!config.generationRate) continue;
+
+      // Calculate time elapsed since last collection (in hours)
+      const lastCollected = new Date(building.lastCollectedAt);
+      const hoursElapsed = (now.getTime() - lastCollected.getTime()) / (1000 * 60 * 60);
+
+      // Calculate generated resources
+      const generated = Math.floor(config.generationRate * hoursElapsed);
+
+      if (generated <= 0) continue;
+
+      // Update internal storage, capped by capacity
+      if (building.type === BuildingType.GOLD_MINE) {
+        const newInternalGold = Math.min(
+          building.internalGold + generated,
+          building.internalGoldCapacity
+        );
+
+        await this.db
+          .update(buildings)
+          .set({
+            internalGold: newInternalGold,
+            lastCollectedAt: now,
+            updatedAt: now,
+          })
+          .where(eq(buildings.id, building.id));
+      } else if (building.type === BuildingType.ELIXIR_COLLECTOR) {
+        const newInternalElixir = Math.min(
+          building.internalElixir + generated,
+          building.internalElixirCapacity
+        );
+
+        await this.db
+          .update(buildings)
+          .set({
+            internalElixir: newInternalElixir,
+            lastCollectedAt: now,
+            updatedAt: now,
+          })
+          .where(eq(buildings.id, building.id));
+      }
+    }
   }
 }
