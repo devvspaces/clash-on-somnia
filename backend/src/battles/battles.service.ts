@@ -9,6 +9,7 @@ import { resources } from '../database/schema/resources.schema';
 import { army } from '../database/schema/army.schema';
 import { BuildingType, getBuildingConfig } from '../common/config/buildings.config';
 import { TroopType, getTroopConfig, TroopStats } from '../common/config/troops.config';
+import { DATABASE_CONNECTION } from '../database/database.module';
 
 // Battle event types for replay
 interface BattleEvent {
@@ -58,7 +59,7 @@ interface BattleResult {
 @Injectable()
 export class BattlesService {
   constructor(
-    @Inject('DB_PROD')
+    @Inject(DATABASE_CONNECTION)
     private db: NodePgDatabase<typeof schema>,
   ) {}
 
