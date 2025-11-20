@@ -54,11 +54,11 @@ export const BUILDING_CONFIGS: Record<BuildingType, BuildingConfig> = {
     name: 'Gold Mine',
     description: 'Generates gold over time',
     category: 'resource',
-    baseCost: { gold: 150, elixir: 0 },
+    baseCost: { gold: 0, elixir: 50 },
     buildTime: 30,
     size: { width: 3, height: 3 },
     maxHealth: 400,
-    generationRate: 100, // 100 gold per hour
+    generationRate: 250, // 100 gold per hour
     capacity: 500,
   },
   [BuildingType.ELIXIR_COLLECTOR]: {
@@ -66,11 +66,11 @@ export const BUILDING_CONFIGS: Record<BuildingType, BuildingConfig> = {
     name: 'Elixir Collector',
     description: 'Generates elixir over time',
     category: 'resource',
-    baseCost: { gold: 0, elixir: 150 },
+    baseCost: { gold: 50, elixir: 0 },
     buildTime: 30,
     size: { width: 3, height: 3 },
     maxHealth: 400,
-    generationRate: 100, // 100 elixir per hour
+    generationRate: 250, // 100 elixir per hour
     capacity: 500,
   },
   [BuildingType.GOLD_STORAGE]: {
@@ -78,7 +78,7 @@ export const BUILDING_CONFIGS: Record<BuildingType, BuildingConfig> = {
     name: 'Gold Storage',
     description: 'Stores gold',
     category: 'resource',
-    baseCost: { gold: 300, elixir: 0 },
+    baseCost: { gold: 0, elixir: 150 },
     buildTime: 60,
     size: { width: 3, height: 3 },
     maxHealth: 600,
@@ -89,7 +89,7 @@ export const BUILDING_CONFIGS: Record<BuildingType, BuildingConfig> = {
     name: 'Elixir Storage',
     description: 'Stores elixir',
     category: 'resource',
-    baseCost: { gold: 0, elixir: 300 },
+    baseCost: { gold: 150, elixir: 0 },
     buildTime: 60,
     size: { width: 3, height: 3 },
     maxHealth: 600,
@@ -132,7 +132,7 @@ export const BUILDING_CONFIGS: Record<BuildingType, BuildingConfig> = {
     name: 'Wall',
     description: 'Protects your village',
     category: 'defense',
-    baseCost: { gold: 50, elixir: 0 },
+    baseCost: { gold: 1, elixir: 0 },
     buildTime: 10,
     size: { width: 1, height: 1 },
     maxHealth: 300,
