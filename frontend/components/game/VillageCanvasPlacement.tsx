@@ -139,8 +139,8 @@ export function VillageCanvasPlacement({
           draggedBuildingRef,
           selectedBuildingRef,
           () => buildings,
-          selectedWalls,
-          (buildingIds) => handleMultiMove(buildingIds),
+          () => selectedWalls, // Pass getter function instead of value
+          (buildingIds, deltaX, deltaY) => handleMultiMove(buildingIds, deltaX, deltaY),
         );
         buildingContainersRef.current.set(building.id, container);
         app.stage.addChild(container);
@@ -157,8 +157,8 @@ export function VillageCanvasPlacement({
             draggedBuildingRef,
             selectedBuildingRef,
             () => buildings,
-            selectedWalls,
-            (buildingIds) => handleMultiMove(buildingIds),
+            () => selectedWalls, // Pass getter function instead of value
+            (buildingIds, deltaX, deltaY) => handleMultiMove(buildingIds, deltaX, deltaY),
           );
           buildingContainersRef.current.set(building.id, container);
           app.stage.addChild(container);
@@ -174,7 +174,7 @@ export function VillageCanvasPlacement({
         }
       }
     });
-  }, [buildings, onBuildingMove, selectedWalls]);
+  }, [buildings, onBuildingMove]); // Remove selectedWalls from dependencies
 
   const handleBuildingClick = (clickedBuilding: Building, isShiftClick: boolean) => {
     console.log('[Wall Select] Clicked building:', clickedBuilding.type, 'isShift:', isShiftClick, 'currentSelection:', selectedWalls.size);
@@ -230,6 +230,14 @@ export function VillageCanvasPlacement({
     await Promise.all(movePromises);
   };
 
+  // Clear wall history when placement mode becomes inactive
+  useEffect(() => {
+    if (!placementMode?.active) {
+      wallPlacementHistoryRef.current = [];
+      console.log('[Wall Placement] Cleared history - placement mode inactive');
+    }
+  }, [placementMode?.active]);
+
   // Handle placement mode with continuous wall placement
   useEffect(() => {
     const app = appRef.current;
@@ -243,8 +251,6 @@ export function VillageCanvasPlacement({
         app?.stage.removeChild(suggestedPreviewRef.current);
         suggestedPreviewRef.current = null;
       }
-      // Clear wall placement history when exiting placement mode
-      wallPlacementHistoryRef.current = [];
       return;
     }
 
@@ -420,7 +426,7 @@ function createBuildingContainer(
   draggedBuildingRef?: React.MutableRefObject<{ building: Building; startX: number; startY: number } | null>,
   selectedBuildingRef?: React.MutableRefObject<Building | null>,
   getBuildings?: () => Building[],
-  selectedWalls?: Set<string>,
+  getSelectedWalls?: () => Set<string>, // Changed to getter function
   onMultiMove?: (buildingIds: Set<string>, deltaX: number, deltaY: number) => Promise<void>,
 ): PIXI.Container {
   const visualConfig = getBuildingVisual(building.type);
@@ -551,6 +557,7 @@ function createBuildingContainer(
     // Check if valid placement (for single or multi-select)
     const buildingConfig = getBuildingVisual(building.type);
     const allBuildings = getBuildings ? getBuildings() : [];
+    const selectedWalls = getSelectedWalls ? getSelectedWalls() : new Set<string>();
 
     let valid = false;
     if (selectedWalls && selectedWalls.size > 1 && selectedWalls.has(building.id)) {
@@ -609,6 +616,7 @@ function createBuildingContainer(
 
     const buildingConfig = getBuildingVisual(building.type);
     const allBuildings = getBuildings ? getBuildings() : [];
+    const selectedWalls = getSelectedWalls ? getSelectedWalls() : new Set<string>();
 
     // Handle multi-select move
     if (selectedWalls && selectedWalls.size > 1 && selectedWalls.has(building.id)) {
