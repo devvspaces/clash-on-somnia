@@ -57,6 +57,11 @@ export class SpectateGateway implements OnGatewayInit, OnGatewayConnection, OnGa
 
   handleConnection(client: Socket) {
     console.log(`[Spectate] Client connected: ${client.id}`);
+
+    // Ensure gateway is registered with session manager (failsafe if afterInit wasn't called)
+    if (this.battleSessionManager) {
+      this.battleSessionManager.setSpectateGateway(this);
+    }
   }
 
   handleDisconnect(client: Socket) {
