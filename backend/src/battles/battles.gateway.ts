@@ -55,6 +55,7 @@ export class BattlesGateway implements OnGatewayConnection, OnGatewayDisconnect,
   }
 
   afterInit(server: Server) {
+    this.server = server;
     console.log('BattlesGateway initialized');
     // Set gateway reference on service
     this.battlesService.setBattlesGateway(this);
