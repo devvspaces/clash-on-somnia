@@ -20,6 +20,7 @@ import {
 } from '@/lib/socket';
 import { ArrowLeft, Eye, Users, Clock, Home } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { buildingData, BuildingType } from '@/lib/config/buildingsData';
 
 // Troop rendering data
 interface TroopSprite {
@@ -41,6 +42,7 @@ interface BuildingSprite {
   health: number;
   maxHealth: number;
   healthBar?: Graphics;
+  width: number; // Store width for health bar rendering
 }
 
 // Grid and rendering constants
@@ -224,15 +226,21 @@ export default function SpectateBattlePage() {
 
     const buildingContainer = new Container();
 
+    // Get building config to determine size
+    const buildingType = building.type.toLowerCase() as BuildingType;
+    const config = buildingData[buildingType];
+    const buildingWidth = config ? config.size.width * TILE_SIZE : 2 * TILE_SIZE;
+    const buildingHeight = config ? config.size.height * TILE_SIZE : 2 * TILE_SIZE;
+
     // Create building sprite (simple rectangle)
     const sprite = new Graphics();
     sprite.beginFill(getBuildingColor(building.type));
-    sprite.drawRect(0, 0, 2 * TILE_SIZE, 2 * TILE_SIZE);
+    sprite.drawRect(0, 0, buildingWidth, buildingHeight);
     sprite.endFill();
 
     // Add border
     sprite.lineStyle(1, 0x000000, 0.5);
-    sprite.drawRect(0, 0, 2 * TILE_SIZE, 2 * TILE_SIZE);
+    sprite.drawRect(0, 0, buildingWidth, buildingHeight);
 
     buildingContainer.addChild(sprite);
 
@@ -241,7 +249,7 @@ export default function SpectateBattlePage() {
       fontSize: 8,
       fill: 0xffffff,
     });
-    label.position.set(TILE_SIZE, TILE_SIZE);
+    label.position.set(buildingWidth / 2, buildingHeight / 2);
     label.anchor.set(0.5);
     buildingContainer.addChild(label);
 
@@ -251,7 +259,7 @@ export default function SpectateBattlePage() {
     buildingsLayerRef.current.addChild(buildingContainer);
 
     // Create health bar
-    const healthBar = createHealthBar(building.health, building.maxHealth, 2 * TILE_SIZE);
+    const healthBar = createHealthBar(building.health, building.maxHealth, buildingWidth);
     healthBar.position.set(building.position.x * TILE_SIZE, (building.position.y - 0.5) * TILE_SIZE);
     buildingsLayerRef.current.addChild(healthBar);
 
@@ -263,6 +271,7 @@ export default function SpectateBattlePage() {
       health: building.health,
       maxHealth: building.maxHealth,
       healthBar,
+      width: buildingWidth,
     });
   };
 
@@ -371,7 +380,7 @@ export default function SpectateBattlePage() {
     buildingSprite.health = data.remainingHealth;
 
     buildingSprite.healthBar.clear();
-    const barWidth = 2 * TILE_SIZE;
+    const barWidth = buildingSprite.width; // Use actual building width
     const barHeight = 3;
     const healthPercent = buildingSprite.health / buildingSprite.maxHealth;
 
