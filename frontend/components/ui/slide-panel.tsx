@@ -44,27 +44,22 @@ export function SlidePanel({
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
-
   return (
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300"
+        className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${
+          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
         onClick={onClose}
-        style={{
-          animation: isOpen ? 'fadeIn 0.3s ease-out' : 'fadeOut 0.3s ease-out',
-        }}
       />
 
       {/* Slide Panel */}
       <div
-        className="fixed top-0 right-0 h-full bg-background shadow-2xl z-50 flex flex-col border-l"
-        style={{
-          width,
-          transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
-          transition: 'transform 0.3s ease-out',
-        }}
+        className={`fixed top-0 right-0 h-full bg-background shadow-2xl z-50 flex flex-col border-l transition-transform duration-300 ease-in-out ${
+          isOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+        style={{ width }}
       >
         {/* Header */}
         {title && (
@@ -86,26 +81,6 @@ export function SlidePanel({
           {children}
         </div>
       </div>
-
-      <style jsx global>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-
-        @keyframes fadeOut {
-          from {
-            opacity: 1;
-          }
-          to {
-            opacity: 0;
-          }
-        }
-      `}</style>
     </>
   );
 }

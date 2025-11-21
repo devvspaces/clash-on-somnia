@@ -534,6 +534,7 @@ export default function VillagePage() {
       <SlidePanel
         isOpen={showBattlePrep}
         onClose={() => setShowBattlePrep(false)}
+        title="Attack"
         width="500px"
       >
         <BattlePreparation
