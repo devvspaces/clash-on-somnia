@@ -33,62 +33,62 @@ export interface CursorConfig {
  */
 export const BUILDING_SPRITES: Record<BuildingType, SpriteConfig> = {
   [BuildingType.TOWN_HALL]: {
-    path: '/assets/kenney_tiny-town/Tiles/tile_0000.png', // Large main building
+    path: '/assets/kenney_tiny-town/Tiles/tile_0062.png', // Large stone building with dark roof
     anchor: { x: 0.5, y: 0.5 },
     scaleMultiplier: 1.0,
     nativeSize: { width: 16, height: 16 },
   },
   [BuildingType.GOLD_MINE]: {
-    path: '/assets/kenney_tiny-town/Tiles/tile_0041.png', // Resource/mining building
+    path: '/assets/kenney_tiny-town/Tiles/tile_0091.png', // Resource building with door
     anchor: { x: 0.5, y: 0.5 },
     scaleMultiplier: 1.0,
     nativeSize: { width: 16, height: 16 },
   },
   [BuildingType.ELIXIR_COLLECTOR]: {
-    path: '/assets/kenney_tiny-town/Tiles/tile_0042.png', // Different resource building
+    path: '/assets/kenney_tiny-town/Tiles/tile_0092.png', // Orange dome resource building
     anchor: { x: 0.5, y: 0.5 },
     scaleMultiplier: 1.0,
     nativeSize: { width: 16, height: 16 },
   },
   [BuildingType.GOLD_STORAGE]: {
-    path: '/assets/kenney_tiny-town/Tiles/tile_0043.png', // Storage building
+    path: '/assets/kenney_tiny-town/Tiles/tile_0090.png', // Storage building with red door
     anchor: { x: 0.5, y: 0.5 },
     scaleMultiplier: 1.0,
     nativeSize: { width: 16, height: 16 },
   },
   [BuildingType.ELIXIR_STORAGE]: {
-    path: '/assets/kenney_tiny-town/Tiles/tile_0044.png', // Different storage
+    path: '/assets/kenney_tiny-town/Tiles/tile_0076.png', // Gray/blue storage building
     anchor: { x: 0.5, y: 0.5 },
     scaleMultiplier: 1.0,
     nativeSize: { width: 16, height: 16 },
   },
   [BuildingType.CANNON]: {
-    path: '/assets/kenney_tiny-town/Tiles/tile_0016.png', // Defensive structure
+    path: '/assets/kenney_tiny-town/Tiles/tile_0105.png', // Actual cannon weapon sprite
     anchor: { x: 0.5, y: 0.5 },
     scaleMultiplier: 1.0,
     nativeSize: { width: 16, height: 16 },
   },
   [BuildingType.ARCHER_TOWER]: {
-    path: '/assets/kenney_tiny-town/Tiles/tile_0017.png', // Tower structure
+    path: '/assets/kenney_tiny-town/Tiles/tile_0100.png', // Gray tower/fortification
     anchor: { x: 0.5, y: 0.5 },
     scaleMultiplier: 1.0,
     nativeSize: { width: 16, height: 16 },
   },
   [BuildingType.WALL]: {
-    // Walls use tiny-town wall tiles with blending
-    path: '/assets/kenney_tiny-town/Tiles/tile_0094.png', // Wall tile
+    // Walls are rendered as colored rectangles with blending, not sprites
+    path: '',
     anchor: { x: 0.5, y: 0.5 },
     scaleMultiplier: 1.0,
     nativeSize: { width: 16, height: 16 },
   },
   [BuildingType.ARMY_CAMP]: {
-    path: '/assets/kenney_tiny-town/Tiles/tile_0001.png', // Large camp/barracks
+    path: '/assets/kenney_tiny-town/Tiles/tile_0095.png', // Red tent/camp structure
     anchor: { x: 0.5, y: 0.5 },
     scaleMultiplier: 1.0,
     nativeSize: { width: 16, height: 16 },
   },
   [BuildingType.BARRACKS]: {
-    path: '/assets/kenney_tiny-town/Tiles/tile_0002.png', // Military building
+    path: '/assets/kenney_tiny-town/Tiles/tile_0080.png', // Small building with red roof
     anchor: { x: 0.5, y: 0.5 },
     scaleMultiplier: 1.0,
     nativeSize: { width: 16, height: 16 },
@@ -199,17 +199,6 @@ export const CRITICAL_ASSETS: string[] = [
   ...Object.values(BUILDING_SPRITES)
     .map((sprite) => sprite.path)
     .filter((path) => path !== ''),
-
-  // Wall tiles for dynamic wall rendering
-  '/assets/kenney_tiny-town/Tiles/tile_0044.png', // Top-left corner
-  '/assets/kenney_tiny-town/Tiles/tile_0045.png', // Top edge
-  '/assets/kenney_tiny-town/Tiles/tile_0046.png', // Top-right corner
-  '/assets/kenney_tiny-town/Tiles/tile_0059.png', // Left edge
-  '/assets/kenney_tiny-town/Tiles/tile_0060.png', // Center
-  '/assets/kenney_tiny-town/Tiles/tile_0061.png', // Right edge
-  '/assets/kenney_tiny-town/Tiles/tile_0068.png', // Bottom-left corner
-  '/assets/kenney_tiny-town/Tiles/tile_0069.png', // Bottom edge
-  '/assets/kenney_tiny-town/Tiles/tile_0070.png', // Bottom-right corner
 
   // Cursor sprites will be loaded when CursorManager is implemented
   // ...Object.values(CURSOR_SPRITES).map((cursor) => cursor.path),
