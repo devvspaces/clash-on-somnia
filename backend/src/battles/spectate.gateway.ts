@@ -78,6 +78,9 @@ export class SpectateGateway implements OnGatewayConnection, OnGatewayDisconnect
 
     console.log(`[Spectate] Client ${client.id} joining battle ${battleId} as spectator`);
 
+    // Get battle session to send initial state
+    const session = this.battleSessionManager.getSession(battleId);
+
     // Join the socket.io room
     client.join(battleId);
 
@@ -90,10 +93,31 @@ export class SpectateGateway implements OnGatewayConnection, OnGatewayDisconnect
 
     console.log(`[Spectate] Client ${client.id} joined battle ${battleId}. Total spectators: ${this.battleSpectators.get(battleId)!.size}`);
 
+    // Return battle session data for spectators to render
     return {
       success: true,
       message: 'Joined battle as spectator',
       isSpectator: true,
+      session: session ? {
+        id: session.id,
+        status: session.status,
+        buildings: session.buildings.map((b) => ({
+          id: b.id,
+          type: b.type,
+          position: b.position,
+          health: b.health,
+          maxHealth: b.maxHealth,
+          isDestroyed: b.isDestroyed,
+        })),
+        troops: session.troops.map((t) => ({
+          id: t.id,
+          type: t.type,
+          position: t.position,
+          health: t.health,
+          maxHealth: t.maxHealth,
+        })),
+        destructionPercentage: session.destructionPercentage,
+      } : null,
     };
   }
 
@@ -123,6 +147,12 @@ export class SpectateGateway implements OnGatewayConnection, OnGatewayDisconnect
    * Broadcast a battle event to all spectators in a battle room
    */
   broadcastBattleEvent(battleId: string, event: BattleEvent) {
+    // Check if server is initialized (may not be ready during early initialization)
+    if (!this.server) {
+      console.warn(`[Spectate] Server not initialized yet, cannot broadcast ${event.type}`);
+      return;
+    }
+
     const spectatorCount = this.battleSpectators.get(battleId)?.size || 0;
     console.log(`[Spectate] Broadcasting ${event.type} to battle ${battleId} (${spectatorCount} spectators)`);
     this.server.to(battleId).emit('battleEvent', event);
@@ -132,6 +162,12 @@ export class SpectateGateway implements OnGatewayConnection, OnGatewayDisconnect
    * Broadcast battle end event to spectators
    */
   broadcastBattleEnd(battleId: string, result: any) {
+    // Check if server is initialized
+    if (!this.server) {
+      console.warn('[Spectate] Server not initialized yet, cannot broadcast battle end');
+      return;
+    }
+
     console.log(`[Spectate] Broadcasting battle end to ${battleId}`);
     this.server.to(battleId).emit('battleEnd', result);
   }

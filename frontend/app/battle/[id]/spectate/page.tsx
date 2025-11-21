@@ -216,6 +216,54 @@ export default function SpectateBattlePage() {
     return healthBar;
   };
 
+  // Render a building
+  const renderBuilding = (building: any) => {
+    if (!buildingsLayerRef.current) return;
+
+    const buildingContainer = new Container();
+
+    // Create building sprite (simple rectangle)
+    const sprite = new Graphics();
+    sprite.beginFill(getBuildingColor(building.type));
+    sprite.drawRect(0, 0, 2 * TILE_SIZE, 2 * TILE_SIZE);
+    sprite.endFill();
+
+    // Add border
+    sprite.lineStyle(1, 0x000000, 0.5);
+    sprite.drawRect(0, 0, 2 * TILE_SIZE, 2 * TILE_SIZE);
+
+    buildingContainer.addChild(sprite);
+
+    // Add label
+    const label = new Text(building.type.replace(/_/g, ' '), {
+      fontSize: 8,
+      fill: 0xffffff,
+    });
+    label.position.set(TILE_SIZE, TILE_SIZE);
+    label.anchor.set(0.5);
+    buildingContainer.addChild(label);
+
+    // Position building
+    buildingContainer.position.set(building.position.x * TILE_SIZE, building.position.y * TILE_SIZE);
+
+    buildingsLayerRef.current.addChild(buildingContainer);
+
+    // Create health bar
+    const healthBar = createHealthBar(building.health, building.maxHealth, 2 * TILE_SIZE);
+    healthBar.position.set(building.position.x * TILE_SIZE, (building.position.y - 0.5) * TILE_SIZE);
+    buildingsLayerRef.current.addChild(healthBar);
+
+    buildingSpritesRef.current.set(building.id, {
+      id: building.id,
+      type: building.type,
+      sprite: buildingContainer,
+      position: building.position,
+      health: building.health,
+      maxHealth: building.maxHealth,
+      healthBar,
+    });
+  };
+
   // Battle event handlers
   const handleBattleEvent = useCallback((event: BattleEvent) => {
     console.log('Spectator received event:', event.type);
@@ -367,6 +415,27 @@ export default function SpectateBattlePage() {
         .then((response) => {
           console.log('[Spectate] Successfully joined battle:', response);
           setBattleStatus('Spectating live battle - watching real-time updates');
+
+          // Render initial buildings if session data is available
+          if (response.session && response.session.buildings && buildingsLayerRef.current) {
+            console.log('[Spectate] Rendering initial buildings:', response.session.buildings.length);
+            response.session.buildings.forEach((building: any) => {
+              renderBuilding(building);
+            });
+          }
+
+          // Render existing troops if any
+          if (response.session && response.session.troops && troopsLayerRef.current) {
+            console.log('[Spectate] Rendering existing troops:', response.session.troops.length);
+            response.session.troops.forEach((troop: any) => {
+              handleTroopSpawn({
+                troopId: troop.id,
+                troopType: troop.type,
+                position: troop.position,
+                health: troop.health,
+              });
+            });
+          }
         })
         .catch((error) => {
           console.error('[Spectate] Failed to join:', error);
