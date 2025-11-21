@@ -27,67 +27,69 @@ export interface CursorConfig {
 
 /**
  * Building Sprite Mappings
- * Using Voxel tiles from /assets/Isometric Blocks/PNG/Voxel tiles/
+ * Using isometric building tiles from /assets/kenney_isometric-buildings-1/PNG/
+ * Note: Walls don't use sprites - they're rendered as colored rectangles with blending
  */
 export const BUILDING_SPRITES: Record<BuildingType, SpriteConfig> = {
   [BuildingType.TOWN_HALL]: {
-    path: '/assets/Isometric Blocks/PNG/Voxel tiles/voxelTile_18.png',
-    anchor: { x: 0.5, y: 0.5 },
-    scaleMultiplier: 1.0,
+    path: '/assets/kenney_isometric-buildings-1/PNG/buildingTiles_001.png',
+    anchor: { x: 0.5, y: 0.7 },
+    scaleMultiplier: 1.2,
     nativeSize: { width: 128, height: 128 },
   },
   [BuildingType.GOLD_MINE]: {
-    path: '/assets/Isometric Blocks/PNG/Voxel tiles/voxelTile_31.png',
-    anchor: { x: 0.5, y: 0.5 },
+    path: '/assets/kenney_isometric-buildings-1/PNG/buildingTiles_025.png',
+    anchor: { x: 0.5, y: 0.65 },
     scaleMultiplier: 1.0,
     nativeSize: { width: 128, height: 128 },
   },
   [BuildingType.ELIXIR_COLLECTOR]: {
-    path: '/assets/Isometric Blocks/PNG/Voxel tiles/voxelTile_32.png',
-    anchor: { x: 0.5, y: 0.5 },
+    path: '/assets/kenney_isometric-buildings-1/PNG/buildingTiles_026.png',
+    anchor: { x: 0.5, y: 0.65 },
     scaleMultiplier: 1.0,
     nativeSize: { width: 128, height: 128 },
   },
   [BuildingType.GOLD_STORAGE]: {
-    path: '/assets/Isometric Blocks/PNG/Voxel tiles/voxelTile_33.png',
-    anchor: { x: 0.5, y: 0.5 },
+    path: '/assets/kenney_isometric-buildings-1/PNG/buildingTiles_020.png',
+    anchor: { x: 0.5, y: 0.65 },
     scaleMultiplier: 1.0,
     nativeSize: { width: 128, height: 128 },
   },
   [BuildingType.ELIXIR_STORAGE]: {
-    path: '/assets/Isometric Blocks/PNG/Voxel tiles/voxelTile_34.png',
-    anchor: { x: 0.5, y: 0.5 },
+    path: '/assets/kenney_isometric-buildings-1/PNG/buildingTiles_021.png',
+    anchor: { x: 0.5, y: 0.65 },
     scaleMultiplier: 1.0,
     nativeSize: { width: 128, height: 128 },
   },
   [BuildingType.CANNON]: {
-    path: '/assets/Isometric Blocks/PNG/Voxel tiles/voxelTile_40.png',
-    anchor: { x: 0.5, y: 0.5 },
+    path: '/assets/kenney_isometric-buildings-1/PNG/buildingTiles_005.png',
+    anchor: { x: 0.5, y: 0.65 },
     scaleMultiplier: 1.0,
     nativeSize: { width: 128, height: 128 },
   },
   [BuildingType.ARCHER_TOWER]: {
-    path: '/assets/Isometric Blocks/PNG/Voxel tiles/voxelTile_41.png',
-    anchor: { x: 0.5, y: 0.6 }, // Lower anchor for tall tower
+    path: '/assets/kenney_isometric-buildings-1/PNG/buildingTiles_007.png',
+    anchor: { x: 0.5, y: 0.7 },
     scaleMultiplier: 1.0,
-    yOffset: -8, // Lift tower up slightly
+    yOffset: -8,
     nativeSize: { width: 128, height: 160 },
   },
   [BuildingType.WALL]: {
-    path: '/assets/Isometric Blocks/PNG/Voxel tiles/voxelTile_01.png',
+    // Walls don't use sprites - rendered as colored rectangles
+    path: '',
     anchor: { x: 0.5, y: 0.5 },
     scaleMultiplier: 1.0,
     nativeSize: { width: 128, height: 128 },
   },
   [BuildingType.ARMY_CAMP]: {
-    path: '/assets/Isometric Blocks/PNG/Voxel tiles/voxelTile_28.png',
-    anchor: { x: 0.5, y: 0.5 },
-    scaleMultiplier: 1.0,
+    path: '/assets/kenney_isometric-buildings-1/PNG/buildingTiles_028.png',
+    anchor: { x: 0.5, y: 0.7 },
+    scaleMultiplier: 1.2,
     nativeSize: { width: 128, height: 128 },
   },
   [BuildingType.BARRACKS]: {
-    path: '/assets/Isometric Blocks/PNG/Voxel tiles/voxelTile_29.png',
-    anchor: { x: 0.5, y: 0.5 },
+    path: '/assets/kenney_isometric-buildings-1/PNG/buildingTiles_027.png',
+    anchor: { x: 0.5, y: 0.65 },
     scaleMultiplier: 1.0,
     nativeSize: { width: 128, height: 128 },
   },
@@ -193,8 +195,10 @@ export const DECORATIONS: Record<string, DecorationConfig> = {
  * These are critical assets that should be loaded immediately
  */
 export const CRITICAL_ASSETS: string[] = [
-  // All building sprites
-  ...Object.values(BUILDING_SPRITES).map((sprite) => sprite.path),
+  // All building sprites (excluding walls which have empty paths)
+  ...Object.values(BUILDING_SPRITES)
+    .map((sprite) => sprite.path)
+    .filter((path) => path !== ''),
 
   // Cursor sprites will be loaded when CursorManager is implemented
   // ...Object.values(CURSOR_SPRITES).map((cursor) => cursor.path),

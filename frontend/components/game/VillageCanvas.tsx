@@ -123,50 +123,50 @@ function drawBuilding(
   shadow.endFill();
   container.addChild(shadow);
 
-  // Main building sprite (or fallback to rectangle)
-  const spriteConfig = getBuildingSprite(building.type as BuildingType);
-  const texture = SpriteManager.getTextureSync(spriteConfig.path);
+  // Main building sprite (walls are rendered as rectangles)
+  const isWall = building.type === 'wall';
+  let buildingRect: PIXI.Graphics | null = null;
 
-  if (texture) {
-    // Use sprite rendering
-    const buildingSprite = new PIXI.Sprite(texture);
-
-    // Calculate scale to fit the building size
-    const scaleX = width / texture.width;
-    const scaleY = height / texture.height;
-    const scale = Math.min(scaleX, scaleY) * (spriteConfig.scaleMultiplier || 1.0);
-
-    buildingSprite.scale.set(scale, scale);
-    buildingSprite.anchor.set(spriteConfig.anchor?.x || 0.5, spriteConfig.anchor?.y || 0.5);
-    buildingSprite.x = width / 2;
-    buildingSprite.y = height / 2 + (spriteConfig.yOffset || 0);
-
-    container.addChild(buildingSprite);
-  } else {
-    // Fallback to colored rectangle
-    const buildingRect = new PIXI.Graphics();
+  if (isWall) {
+    // Render wall as colored rectangle (no sprites for walls)
+    buildingRect = new PIXI.Graphics();
     buildingRect.beginFill(color);
-    buildingRect.lineStyle(2, 0x000000, 0.5);
-    buildingRect.drawRoundedRect(0, 0, width, height, 4);
+    buildingRect.lineStyle(0); // No border for seamless wall blending
+    buildingRect.drawRect(0, 0, width, height);
     buildingRect.endFill();
     container.addChild(buildingRect);
+  } else {
+    // Non-wall buildings use sprites
+    const spriteConfig = getBuildingSprite(building.type as BuildingType);
+    const texture = SpriteManager.getTextureSync(spriteConfig.path);
+
+    if (texture) {
+      // Use sprite rendering
+      const buildingSprite = new PIXI.Sprite(texture);
+
+      // Calculate scale to fit the building size
+      const scaleX = width / texture.width;
+      const scaleY = height / texture.height;
+      const scale = Math.min(scaleX, scaleY) * (spriteConfig.scaleMultiplier || 1.0);
+
+      buildingSprite.scale.set(scale, scale);
+      buildingSprite.anchor.set(spriteConfig.anchor?.x || 0.5, spriteConfig.anchor?.y || 0.5);
+      buildingSprite.x = width / 2;
+      buildingSprite.y = height / 2 + (spriteConfig.yOffset || 0);
+
+      container.addChild(buildingSprite);
+    } else {
+      // Fallback to colored rectangle
+      buildingRect = new PIXI.Graphics();
+      buildingRect.beginFill(color);
+      buildingRect.lineStyle(2, 0x000000, 0.5);
+      buildingRect.drawRoundedRect(0, 0, width, height, 4);
+      buildingRect.endFill();
+      container.addChild(buildingRect);
+    }
   }
 
-  // Health bar background
-  const healthBarBg = new PIXI.Graphics();
-  healthBarBg.beginFill(0x000000, 0.5);
-  healthBarBg.drawRect(2, height - 6, width - 4, 4);
-  healthBarBg.endFill();
-  container.addChild(healthBarBg);
-
-  // Health bar
-  const healthPercentage = building.health / building.maxHealth;
-  const healthBarColor = healthPercentage > 0.5 ? 0x00ff00 : healthPercentage > 0.25 ? 0xffff00 : 0xff0000;
-  const healthBar = new PIXI.Graphics();
-  healthBar.beginFill(healthBarColor);
-  healthBar.drawRect(2, height - 6, (width - 4) * healthPercentage, 4);
-  healthBar.endFill();
-  container.addChild(healthBar);
+  // Health bars are NOT shown in village view - only in battle mode
 
   // Building name text
   const text = new PIXI.Text(visualConfig.name, {
@@ -188,10 +188,10 @@ function drawBuilding(
       onBuildingClick(building);
     });
     container.on('pointerover', () => {
-      buildingRect.tint = 0xcccccc;
+      container.alpha = 0.8; // Hover effect
     });
     container.on('pointerout', () => {
-      buildingRect.tint = 0xffffff;
+      container.alpha = 1.0;
     });
   }
 
