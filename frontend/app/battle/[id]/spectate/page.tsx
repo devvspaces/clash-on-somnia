@@ -20,7 +20,7 @@ import {
 } from '@/lib/socket';
 import { ArrowLeft, Eye, Users, Clock, Home } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { buildingData, BuildingType } from '@/lib/config/buildingsData';
+import { BUILDING_CONFIGS, BuildingType } from '@/lib/config/buildingsData';
 
 // Troop rendering data
 interface TroopSprite {
@@ -228,7 +228,7 @@ export default function SpectateBattlePage() {
 
     // Get building config to determine size
     const buildingType = building.type.toLowerCase() as BuildingType;
-    const config = buildingData[buildingType];
+    const config = BUILDING_CONFIGS[buildingType];
     const buildingWidth = config ? config.size.width * TILE_SIZE : 2 * TILE_SIZE;
     const buildingHeight = config ? config.size.height * TILE_SIZE : 2 * TILE_SIZE;
 

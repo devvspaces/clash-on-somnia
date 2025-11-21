@@ -22,7 +22,7 @@ import {
 } from '@/lib/socket';
 import { Sword, Shield, Target, X, Home, ArrowLeft, Clock } from 'lucide-react';
 import { BattleSummary } from '@/components/game/BattleSummary';
-import { buildingData, BuildingType } from '@/lib/config/buildingsData';
+import { BUILDING_CONFIGS, BuildingType } from '@/lib/config/buildingsData';
 
 // Troop rendering data
 interface TroopSprite {
@@ -188,7 +188,7 @@ export default function BattlePage() {
 
       // Get building config to determine size
       const buildingType = building.type.toLowerCase() as BuildingType;
-      const config = buildingData[buildingType];
+      const config = BUILDING_CONFIGS[buildingType];
       const buildingWidth = config ? config.size.width * TILE_SIZE : 2 * TILE_SIZE;
       const buildingHeight = config ? config.size.height * TILE_SIZE : 2 * TILE_SIZE;
 
