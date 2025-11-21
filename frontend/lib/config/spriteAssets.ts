@@ -200,6 +200,17 @@ export const CRITICAL_ASSETS: string[] = [
     .map((sprite) => sprite.path)
     .filter((path) => path !== ''),
 
+  // Wall tiles for dynamic wall rendering
+  '/assets/kenney_tiny-town/Tiles/tile_0044.png', // Top-left corner
+  '/assets/kenney_tiny-town/Tiles/tile_0045.png', // Top edge
+  '/assets/kenney_tiny-town/Tiles/tile_0046.png', // Top-right corner
+  '/assets/kenney_tiny-town/Tiles/tile_0059.png', // Left edge
+  '/assets/kenney_tiny-town/Tiles/tile_0060.png', // Center
+  '/assets/kenney_tiny-town/Tiles/tile_0061.png', // Right edge
+  '/assets/kenney_tiny-town/Tiles/tile_0068.png', // Bottom-left corner
+  '/assets/kenney_tiny-town/Tiles/tile_0069.png', // Bottom edge
+  '/assets/kenney_tiny-town/Tiles/tile_0070.png', // Bottom-right corner
+
   // Cursor sprites will be loaded when CursorManager is implemented
   // ...Object.values(CURSOR_SPRITES).map((cursor) => cursor.path),
 ];

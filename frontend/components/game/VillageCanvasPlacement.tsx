@@ -440,6 +440,79 @@ export function VillageCanvasPlacement({
   );
 }
 
+/**
+ * Determine which wall tile to use based on adjacent walls
+ * Wall tile mapping:
+ * - tile_0044: Top-left corner (wall right & bottom)
+ * - tile_0045: Top edge (wall left, right, bottom)
+ * - tile_0046: Top-right corner (wall left & bottom)
+ * - tile_0059: Left edge (wall top, bottom, right)
+ * - tile_0060: Center (wall all sides)
+ * - tile_0061: Right edge (wall top, bottom, left)
+ * - tile_0068: Bottom-left corner (wall top & right)
+ * - tile_0069: Bottom edge (wall left, right, top)
+ * - tile_0070: Bottom-right corner (wall top & left)
+ */
+function getWallTilePath(
+  building: Building,
+  allBuildings: Building[]
+): string {
+  const { positionX, positionY } = building;
+
+  // Check for adjacent walls
+  const hasWallLeft = allBuildings.some(
+    (b) => b.type === 'wall' && b.positionX === positionX - 1 && b.positionY === positionY
+  );
+  const hasWallRight = allBuildings.some(
+    (b) => b.type === 'wall' && b.positionX === positionX + 1 && b.positionY === positionY
+  );
+  const hasWallTop = allBuildings.some(
+    (b) => b.type === 'wall' && b.positionX === positionX && b.positionY === positionY - 1
+  );
+  const hasWallBottom = allBuildings.some(
+    (b) => b.type === 'wall' && b.positionX === positionX && b.positionY === positionY + 1
+  );
+
+  // Determine tile based on adjacent walls
+  if (hasWallTop && hasWallBottom && hasWallLeft && hasWallRight) {
+    // Center - walls on all 4 sides
+    return '/assets/kenney_tiny-town/Tiles/tile_0060.png';
+  } else if (hasWallTop && hasWallBottom && hasWallRight && !hasWallLeft) {
+    // Left edge - walls top, bottom, right
+    return '/assets/kenney_tiny-town/Tiles/tile_0059.png';
+  } else if (hasWallTop && hasWallBottom && hasWallLeft && !hasWallRight) {
+    // Right edge - walls top, bottom, left
+    return '/assets/kenney_tiny-town/Tiles/tile_0061.png';
+  } else if (hasWallLeft && hasWallRight && hasWallBottom && !hasWallTop) {
+    // Top edge - walls left, right, bottom
+    return '/assets/kenney_tiny-town/Tiles/tile_0045.png';
+  } else if (hasWallLeft && hasWallRight && hasWallTop && !hasWallBottom) {
+    // Bottom edge - walls left, right, top
+    return '/assets/kenney_tiny-town/Tiles/tile_0069.png';
+  } else if (hasWallRight && hasWallBottom && !hasWallLeft && !hasWallTop) {
+    // Top-left corner - walls right & bottom
+    return '/assets/kenney_tiny-town/Tiles/tile_0044.png';
+  } else if (hasWallLeft && hasWallBottom && !hasWallRight && !hasWallTop) {
+    // Top-right corner - walls left & bottom
+    return '/assets/kenney_tiny-town/Tiles/tile_0046.png';
+  } else if (hasWallRight && hasWallTop && !hasWallLeft && !hasWallBottom) {
+    // Bottom-left corner - walls top & right
+    return '/assets/kenney_tiny-town/Tiles/tile_0068.png';
+  } else if (hasWallLeft && hasWallTop && !hasWallRight && !hasWallBottom) {
+    // Bottom-right corner - walls top & left
+    return '/assets/kenney_tiny-town/Tiles/tile_0070.png';
+  } else if (hasWallLeft && hasWallRight) {
+    // Horizontal wall segment
+    return '/assets/kenney_tiny-town/Tiles/tile_0045.png';
+  } else if (hasWallTop && hasWallBottom) {
+    // Vertical wall segment
+    return '/assets/kenney_tiny-town/Tiles/tile_0059.png';
+  } else {
+    // Standalone wall - default wall tile
+    return '/assets/kenney_tiny-town/Tiles/tile_0060.png';
+  }
+}
+
 function createBuildingContainer(
   building: Building,
   onBuildingClick?: (building: Building, isShiftClick: boolean) => void,
@@ -472,8 +545,19 @@ function createBuildingContainer(
   let buildingSprite: PIXI.Sprite | null = null;
   let buildingRect: PIXI.Graphics | null = null;
 
-  const spriteConfig = getBuildingSprite(building.type as BuildingType);
-  const texture = SpriteManager.getTextureSync(spriteConfig.path);
+  // For walls, use dynamic tile selection based on adjacent walls
+  const isWall = building.type === 'wall';
+  let spritePath: string;
+
+  if (isWall) {
+    const allBuildings = getBuildings ? getBuildings() : [];
+    spritePath = getWallTilePath(building, allBuildings);
+  } else {
+    const spriteConfig = getBuildingSprite(building.type as BuildingType);
+    spritePath = spriteConfig.path;
+  }
+
+  const texture = SpriteManager.getTextureSync(spritePath);
 
   if (texture) {
     // Use sprite rendering for all buildings
@@ -484,6 +568,7 @@ function createBuildingContainer(
     const targetHeight = height;
     const scaleX = targetWidth / texture.width;
     const scaleY = targetHeight / texture.height;
+    const spriteConfig = isWall ? { scaleMultiplier: 1.0, anchor: { x: 0.5, y: 0.5 }, yOffset: 0 } : getBuildingSprite(building.type as BuildingType);
     const scale = Math.min(scaleX, scaleY) * (spriteConfig.scaleMultiplier || 1.0);
 
     buildingSprite.scale.set(scale, scale);
