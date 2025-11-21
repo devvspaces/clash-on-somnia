@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BattlesService } from './battles.service';
 import { BattlesController } from './battles.controller';
 import { BattlesGateway } from './battles.gateway';
+import { SpectateGateway } from './spectate.gateway';
 import { BattleSessionManager } from './battle-session.manager';
 import { DatabaseModule } from '../database/database.module';
 
@@ -23,7 +24,7 @@ import { DatabaseModule } from '../database/database.module';
     }),
   ],
   controllers: [BattlesController],
-  providers: [BattlesService, BattlesGateway, BattleSessionManager],
+  providers: [BattlesService, BattlesGateway, SpectateGateway, BattleSessionManager],
   exports: [BattlesService],
 })
 export class BattlesModule {}

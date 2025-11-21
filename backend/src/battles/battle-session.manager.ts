@@ -1,5 +1,6 @@
 import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { BattlesGateway, BattleEvent } from './battles.gateway';
+import { SpectateGateway } from './spectate.gateway';
 
 export interface Troop {
   id: string;
@@ -56,10 +57,15 @@ export interface BattleSession {
 export class BattleSessionManager {
   private sessions: Map<string, BattleSession> = new Map();
   private gateway: BattlesGateway;
+  private spectateGateway: SpectateGateway;
   private battlesService: any; // Will be set later to avoid circular dependency
 
   setGateway(gateway: BattlesGateway) {
     this.gateway = gateway;
+  }
+
+  setSpectateGateway(gateway: SpectateGateway) {
+    this.spectateGateway = gateway;
   }
 
   setBattlesService(service: any) {
@@ -491,8 +497,6 @@ export class BattleSessionManager {
   }
 
   private broadcastEvent(sessionOrTroop: BattleSession | Troop, type: string, data: any) {
-    if (!this.gateway) return;
-
     const battleId = 'id' in sessionOrTroop ? (sessionOrTroop as BattleSession).id : null;
     if (!battleId) return;
 
@@ -502,7 +506,15 @@ export class BattleSessionManager {
       data,
     };
 
-    this.gateway.broadcastBattleEvent(battleId, event);
+    // Broadcast to authenticated battle participants (attackers)
+    if (this.gateway) {
+      this.gateway.broadcastBattleEvent(battleId, event);
+    }
+
+    // Broadcast to public spectators
+    if (this.spectateGateway) {
+      this.spectateGateway.broadcastBattleEvent(battleId, event);
+    }
   }
 
   private getDistance(p1: { x: number; y: number }, p2: { x: number; y: number }): number {

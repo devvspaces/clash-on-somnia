@@ -8,14 +8,14 @@ import { Card } from '@/components/ui/card';
 import { battlesApi, PublicBattle } from '@/lib/api/battles';
 import { useAuthStore } from '@/lib/stores';
 import {
-  connectBattleSocket,
-  disconnectBattleSocket,
-  joinBattle,
-  leaveBattle,
-  onBattleEvent,
-  onBattleEnd,
-  offBattleEvent,
-  offBattleEnd,
+  connectSpectateSocket,
+  disconnectSpectateSocket,
+  joinBattleAsSpectator,
+  leaveSpectatorBattle,
+  onSpectateEvent,
+  onSpectateEnd,
+  offSpectateEvent,
+  offSpectateEnd,
   BattleEvent,
 } from '@/lib/socket';
 import { ArrowLeft, Eye, Users, Clock, Home } from 'lucide-react';
@@ -346,45 +346,54 @@ export default function SpectateBattlePage() {
     troopSpritesRef.current.delete(data.troopId);
   };
 
-  // Connect to WebSocket for live battles
+  // Connect to WebSocket for live battles (public spectate socket, no auth required)
   useEffect(() => {
-    if (!battle || battle.status !== 'active' || !isAuthenticated) return;
+    if (!battle || battle.status !== 'active') return;
 
-    const token = localStorage.getItem('auth_token');
-    if (!token) return;
-
-    const socket = connectBattleSocket(token);
+    console.log('[Spectate] Connecting to public spectate socket for battle:', battleId);
+    const socket = connectSpectateSocket();
 
     socket.on('connect', () => {
+      console.log('[Spectate] Connected! Joining battle as spectator...');
       setIsConnected(true);
       setBattleStatus('Spectating live battle...');
 
-      onBattleEvent(handleBattleEvent);
-      onBattleEnd(handleBattleEnd);
+      // Register event handlers
+      onSpectateEvent(handleBattleEvent);
+      onSpectateEnd(handleBattleEnd);
 
-      // Join as spectator - use a dummy village ID
-      joinBattle(battleId, 'spectator')
+      // Join battle as spectator (no authentication required)
+      joinBattleAsSpectator(battleId)
         .then((response) => {
-          console.log('Joined as spectator:', response);
+          console.log('[Spectate] Successfully joined battle:', response);
+          setBattleStatus('Spectating live battle - watching real-time updates');
         })
         .catch((error) => {
-          console.error('Failed to join:', error);
+          console.error('[Spectate] Failed to join:', error);
           setBattleStatus('Failed to join battle - it may have ended');
+          setIsConnected(false);
         });
     });
 
     socket.on('connect_error', (error) => {
-      console.error('Connection error:', error);
+      console.error('[Spectate] Connection error:', error);
+      setIsConnected(false);
+      setBattleStatus('Connection failed - battle may have ended');
+    });
+
+    socket.on('disconnect', () => {
+      console.log('[Spectate] Disconnected from spectate socket');
       setIsConnected(false);
     });
 
     return () => {
-      offBattleEvent(handleBattleEvent);
-      offBattleEnd(handleBattleEnd);
-      leaveBattle().catch(console.error);
-      disconnectBattleSocket();
+      console.log('[Spectate] Cleaning up spectate socket connection');
+      offSpectateEvent(handleBattleEvent);
+      offSpectateEnd(handleBattleEnd);
+      leaveSpectatorBattle().catch(console.error);
+      disconnectSpectateSocket();
     };
-  }, [battle, battleId, isAuthenticated, handleBattleEvent, handleBattleEnd]);
+  }, [battle, battleId, handleBattleEvent, handleBattleEnd]);
 
   if (isLoading) {
     return (
