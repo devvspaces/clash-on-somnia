@@ -401,20 +401,24 @@ export default function SpectateBattlePage() {
     console.log('[Spectate] Connecting to public spectate socket for battle:', battleId);
     const socket = connectSpectateSocket();
 
-    socket.on('connect', () => {
-      console.log('[Spectate] Connected! Joining battle as spectator...');
-      setIsConnected(true);
-      setBattleStatus('Spectating live battle...');
+    // Register event handlers immediately (before or after connection)
+    console.log('[Spectate] Registering event handlers...');
+    onSpectateEvent(handleBattleEvent);
+    onSpectateEnd(handleBattleEnd);
 
-      // Register event handlers
-      onSpectateEvent(handleBattleEvent);
-      onSpectateEnd(handleBattleEnd);
+    // Test event listener to debug
+    socket.on('battleEvent', (event: any) => {
+      console.log('[Spectate] RAW EVENT RECEIVED:', event);
+    });
 
-      // Join battle as spectator (no authentication required)
+    // Function to join battle
+    const joinBattleRoom = () => {
+      console.log('[Spectate] Joining battle room...');
       joinBattleAsSpectator(battleId)
         .then((response) => {
           console.log('[Spectate] Successfully joined battle:', response);
           setBattleStatus('Spectating live battle - watching real-time updates');
+          setIsConnected(true);
 
           // Render initial buildings if session data is available
           if (response.session && response.session.buildings && buildingsLayerRef.current) {
@@ -442,7 +446,19 @@ export default function SpectateBattlePage() {
           setBattleStatus('Failed to join battle - it may have ended');
           setIsConnected(false);
         });
-    });
+    };
+
+    // Join immediately if already connected, otherwise wait for connect event
+    if (socket.connected) {
+      console.log('[Spectate] Socket already connected, joining immediately');
+      joinBattleRoom();
+    } else {
+      console.log('[Spectate] Waiting for socket to connect...');
+      socket.on('connect', () => {
+        console.log('[Spectate] Connected! Socket ID:', socket.id);
+        joinBattleRoom();
+      });
+    }
 
     socket.on('connect_error', (error) => {
       console.error('[Spectate] Connection error:', error);
@@ -457,6 +473,7 @@ export default function SpectateBattlePage() {
 
     return () => {
       console.log('[Spectate] Cleaning up spectate socket connection');
+      socket.off('battleEvent'); // Remove raw listener
       offSpectateEvent(handleBattleEvent);
       offSpectateEnd(handleBattleEnd);
       leaveSpectatorBattle().catch(console.error);
