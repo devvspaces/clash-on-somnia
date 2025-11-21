@@ -8,6 +8,8 @@ import {
   MessageBody,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { Inject, forwardRef } from '@nestjs/common';
+import { BattleSessionManager } from './battle-session.manager';
 
 export interface BattleEvent {
   type: 'TROOP_SPAWN' | 'TROOP_MOVE' | 'TROOP_ATTACK' | 'TROOP_DEATH' | 'BUILDING_ATTACK' | 'BUILDING_DESTROYED' | 'BATTLE_END';
@@ -35,7 +37,10 @@ export class SpectateGateway implements OnGatewayConnection, OnGatewayDisconnect
   private spectatorBattles = new Map<string, string>(); // socketId -> battleId
   private battleSpectators = new Map<string, Set<string>>(); // battleId -> Set<socketId>
 
-  constructor(private battleSessionManager: any) {
+  constructor(
+    @Inject(forwardRef(() => BattleSessionManager))
+    private battleSessionManager: BattleSessionManager,
+  ) {
     // Set gateway reference in session manager for broadcasting
     this.battleSessionManager.setSpectateGateway(this);
   }
