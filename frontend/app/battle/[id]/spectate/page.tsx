@@ -335,7 +335,17 @@ export default function SpectateBattlePage() {
   // Handle troop move
   const handleTroopMove = (data: any) => {
     const troopSprite = troopSpritesRef.current.get(data.troopId);
-    if (!troopSprite) return;
+    if (!troopSprite) {
+      console.warn('[Spectate] TROOP_MOVE for unknown troop:', data.troopId, 'Creating it now...');
+      // Troop spawned before spectator joined - create it dynamically
+      handleTroopSpawn({
+        troopId: data.troopId,
+        troopType: 'BARBARIAN', // Default type, we don't know the actual type
+        position: data.to,
+        health: 100, // Default health
+      });
+      return;
+    }
 
     troopSprite.sprite.position.set(
       data.to.x * TILE_SIZE + TILE_SIZE / 2,

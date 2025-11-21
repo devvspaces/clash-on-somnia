@@ -95,6 +95,16 @@ export class SpectateGateway implements OnGatewayInit, OnGatewayConnection, OnGa
 
     // Get battle session to send initial state
     const session = this.battleSessionManager.getSession(battleId);
+    console.log(`[Spectate] Session found: ${!!session}, Troops count: ${session?.troops?.length || 0}, Buildings count: ${session?.buildings?.length || 0}`);
+    if (session && session.troops.length > 0) {
+      console.log(`[Spectate] First troop:`, {
+        id: session.troops[0].id,
+        type: session.troops[0].type,
+        position: session.troops[0].position,
+        health: session.troops[0].health,
+        isAlive: session.troops[0].isAlive,
+      });
+    }
 
     // Join the socket.io room
     client.join(battleId);
@@ -109,7 +119,7 @@ export class SpectateGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     console.log(`[Spectate] Client ${client.id} joined battle ${battleId}. Total spectators: ${this.battleSpectators.get(battleId)!.size}`);
 
     // Return battle session data for spectators to render
-    return {
+    const response = {
       success: true,
       message: 'Joined battle as spectator',
       isSpectator: true,
@@ -134,6 +144,10 @@ export class SpectateGateway implements OnGatewayInit, OnGatewayConnection, OnGa
         destructionPercentage: session.destructionPercentage,
       } : null,
     };
+
+    console.log(`[Spectate] Sending response with ${response.session?.troops?.length || 0} troops and ${response.session?.buildings?.length || 0} buildings`);
+
+    return response;
   }
 
   /**
