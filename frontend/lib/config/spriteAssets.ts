@@ -27,71 +27,71 @@ export interface CursorConfig {
 
 /**
  * Building Sprite Mappings
- * Using isometric building tiles from /assets/kenney_isometric-buildings-1/PNG/
- * Note: Walls don't use sprites - they're rendered as colored rectangles with blending
+ * Using top-down tiles from /assets/kenney_tiny-town/Tiles/
+ * Perfect for grid-based top-down gameplay (not isometric)
+ * Walls are still rendered as colored rectangles with blending
  */
 export const BUILDING_SPRITES: Record<BuildingType, SpriteConfig> = {
   [BuildingType.TOWN_HALL]: {
-    path: '/assets/kenney_isometric-buildings-1/PNG/buildingTiles_001.png',
-    anchor: { x: 0.5, y: 0.7 },
-    scaleMultiplier: 1.2,
-    nativeSize: { width: 128, height: 128 },
-  },
-  [BuildingType.GOLD_MINE]: {
-    path: '/assets/kenney_isometric-buildings-1/PNG/buildingTiles_025.png',
-    anchor: { x: 0.5, y: 0.65 },
-    scaleMultiplier: 1.0,
-    nativeSize: { width: 128, height: 128 },
-  },
-  [BuildingType.ELIXIR_COLLECTOR]: {
-    path: '/assets/kenney_isometric-buildings-1/PNG/buildingTiles_026.png',
-    anchor: { x: 0.5, y: 0.65 },
-    scaleMultiplier: 1.0,
-    nativeSize: { width: 128, height: 128 },
-  },
-  [BuildingType.GOLD_STORAGE]: {
-    path: '/assets/kenney_isometric-buildings-1/PNG/buildingTiles_020.png',
-    anchor: { x: 0.5, y: 0.65 },
-    scaleMultiplier: 1.0,
-    nativeSize: { width: 128, height: 128 },
-  },
-  [BuildingType.ELIXIR_STORAGE]: {
-    path: '/assets/kenney_isometric-buildings-1/PNG/buildingTiles_021.png',
-    anchor: { x: 0.5, y: 0.65 },
-    scaleMultiplier: 1.0,
-    nativeSize: { width: 128, height: 128 },
-  },
-  [BuildingType.CANNON]: {
-    path: '/assets/kenney_isometric-buildings-1/PNG/buildingTiles_005.png',
-    anchor: { x: 0.5, y: 0.65 },
-    scaleMultiplier: 1.0,
-    nativeSize: { width: 128, height: 128 },
-  },
-  [BuildingType.ARCHER_TOWER]: {
-    path: '/assets/kenney_isometric-buildings-1/PNG/buildingTiles_007.png',
-    anchor: { x: 0.5, y: 0.7 },
-    scaleMultiplier: 1.0,
-    yOffset: -8,
-    nativeSize: { width: 128, height: 160 },
-  },
-  [BuildingType.WALL]: {
-    // Walls don't use sprites - rendered as colored rectangles
-    path: '',
+    path: '/assets/kenney_tiny-town/Tiles/tile_0000.png', // Large main building
     anchor: { x: 0.5, y: 0.5 },
     scaleMultiplier: 1.0,
-    nativeSize: { width: 128, height: 128 },
+    nativeSize: { width: 16, height: 16 },
+  },
+  [BuildingType.GOLD_MINE]: {
+    path: '/assets/kenney_tiny-town/Tiles/tile_0041.png', // Resource/mining building
+    anchor: { x: 0.5, y: 0.5 },
+    scaleMultiplier: 1.0,
+    nativeSize: { width: 16, height: 16 },
+  },
+  [BuildingType.ELIXIR_COLLECTOR]: {
+    path: '/assets/kenney_tiny-town/Tiles/tile_0042.png', // Different resource building
+    anchor: { x: 0.5, y: 0.5 },
+    scaleMultiplier: 1.0,
+    nativeSize: { width: 16, height: 16 },
+  },
+  [BuildingType.GOLD_STORAGE]: {
+    path: '/assets/kenney_tiny-town/Tiles/tile_0043.png', // Storage building
+    anchor: { x: 0.5, y: 0.5 },
+    scaleMultiplier: 1.0,
+    nativeSize: { width: 16, height: 16 },
+  },
+  [BuildingType.ELIXIR_STORAGE]: {
+    path: '/assets/kenney_tiny-town/Tiles/tile_0044.png', // Different storage
+    anchor: { x: 0.5, y: 0.5 },
+    scaleMultiplier: 1.0,
+    nativeSize: { width: 16, height: 16 },
+  },
+  [BuildingType.CANNON]: {
+    path: '/assets/kenney_tiny-town/Tiles/tile_0016.png', // Defensive structure
+    anchor: { x: 0.5, y: 0.5 },
+    scaleMultiplier: 1.0,
+    nativeSize: { width: 16, height: 16 },
+  },
+  [BuildingType.ARCHER_TOWER]: {
+    path: '/assets/kenney_tiny-town/Tiles/tile_0017.png', // Tower structure
+    anchor: { x: 0.5, y: 0.5 },
+    scaleMultiplier: 1.0,
+    nativeSize: { width: 16, height: 16 },
+  },
+  [BuildingType.WALL]: {
+    // Walls use tiny-town wall tiles with blending
+    path: '/assets/kenney_tiny-town/Tiles/tile_0094.png', // Wall tile
+    anchor: { x: 0.5, y: 0.5 },
+    scaleMultiplier: 1.0,
+    nativeSize: { width: 16, height: 16 },
   },
   [BuildingType.ARMY_CAMP]: {
-    path: '/assets/kenney_isometric-buildings-1/PNG/buildingTiles_028.png',
-    anchor: { x: 0.5, y: 0.7 },
-    scaleMultiplier: 1.2,
-    nativeSize: { width: 128, height: 128 },
+    path: '/assets/kenney_tiny-town/Tiles/tile_0001.png', // Large camp/barracks
+    anchor: { x: 0.5, y: 0.5 },
+    scaleMultiplier: 1.0,
+    nativeSize: { width: 16, height: 16 },
   },
   [BuildingType.BARRACKS]: {
-    path: '/assets/kenney_isometric-buildings-1/PNG/buildingTiles_027.png',
-    anchor: { x: 0.5, y: 0.65 },
+    path: '/assets/kenney_tiny-town/Tiles/tile_0002.png', // Military building
+    anchor: { x: 0.5, y: 0.5 },
     scaleMultiplier: 1.0,
-    nativeSize: { width: 128, height: 128 },
+    nativeSize: { width: 16, height: 16 },
   },
 };
 
