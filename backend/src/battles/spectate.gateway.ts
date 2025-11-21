@@ -4,6 +4,7 @@ import {
   SubscribeMessage,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
   ConnectedSocket,
   MessageBody,
 } from '@nestjs/websockets';
@@ -29,7 +30,7 @@ export interface BattleEvent {
   },
   namespace: '/spectate',
 })
-export class SpectateGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class SpectateGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
@@ -41,7 +42,16 @@ export class SpectateGateway implements OnGatewayConnection, OnGatewayDisconnect
     @Inject(forwardRef(() => BattleSessionManager))
     private battleSessionManager: BattleSessionManager,
   ) {
-    // Set gateway reference in session manager for broadcasting
+    // Don't set gateway here - server isn't initialized yet!
+  }
+
+  /**
+   * Called after WebSocket server is initialized
+   * This is when this.server is available
+   */
+  afterInit(server: Server) {
+    console.log('[Spectate] WebSocket server initialized on /spectate namespace');
+    // NOW set the gateway reference - server is ready
     this.battleSessionManager.setSpectateGateway(this);
   }
 
@@ -147,12 +157,6 @@ export class SpectateGateway implements OnGatewayConnection, OnGatewayDisconnect
    * Broadcast a battle event to all spectators in a battle room
    */
   broadcastBattleEvent(battleId: string, event: BattleEvent) {
-    // Check if server is initialized (may not be ready during early initialization)
-    if (!this.server) {
-      console.warn(`[Spectate] Server not initialized yet, cannot broadcast ${event.type}`);
-      return;
-    }
-
     const spectatorCount = this.battleSpectators.get(battleId)?.size || 0;
     console.log(`[Spectate] Broadcasting ${event.type} to battle ${battleId} (${spectatorCount} spectators)`);
     this.server.to(battleId).emit('battleEvent', event);
@@ -162,12 +166,6 @@ export class SpectateGateway implements OnGatewayConnection, OnGatewayDisconnect
    * Broadcast battle end event to spectators
    */
   broadcastBattleEnd(battleId: string, result: any) {
-    // Check if server is initialized
-    if (!this.server) {
-      console.warn('[Spectate] Server not initialized yet, cannot broadcast battle end');
-      return;
-    }
-
     console.log(`[Spectate] Broadcasting battle end to ${battleId}`);
     this.server.to(battleId).emit('battleEnd', result);
   }
