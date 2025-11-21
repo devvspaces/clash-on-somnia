@@ -645,7 +645,7 @@ export default function SpectateBattlePage() {
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-4">Battle not found</h2>
           <Button onClick={() => router.push(returnTo)}>
-            {returnTo === '/war-room' ? 'Back to War Room' : 'Return Home'}
+            {returnTo === '/war-room' || returnTo === '/village' ? 'Back to Village' : 'Return Home'}
           </Button>
         </div>
       </div>
@@ -662,7 +662,7 @@ export default function SpectateBattlePage() {
           <div className="flex items-center justify-between">
             <Button variant="outline" onClick={() => router.push(returnTo)}>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              {returnTo === '/war-room' ? 'Back to War Room' : 'Back to Home'}
+              {returnTo === '/war-room' || returnTo === '/village' ? 'Back to Village' : 'Back to Home'}
             </Button>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Eye className="w-6 h-6 text-primary" />

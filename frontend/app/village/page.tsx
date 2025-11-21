@@ -9,6 +9,7 @@ import { BuildingShop } from '@/components/game/BuildingShop';
 import { ArmyTraining } from '@/components/game/ArmyTraining';
 import { BattlePreparation } from '@/components/game/BattlePreparation';
 import { BattleResult } from '@/components/game/BattleResult';
+import { WarRoomModal } from '@/components/WarRoomModal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Building2, Users, Swords, Info, Plus, Trash2, History } from 'lucide-react';
@@ -27,6 +28,7 @@ export default function VillagePage() {
   const [showBuildingShop, setShowBuildingShop] = useState(false);
   const [showArmyTraining, setShowArmyTraining] = useState(false);
   const [showBattlePrep, setShowBattlePrep] = useState(false);
+  const [showWarRoom, setShowWarRoom] = useState(false);
   const [battleResult, setBattleResult] = useState<any>(null);
   const [placementMode, setPlacementMode] = useState<{
     active: boolean;
@@ -465,12 +467,12 @@ export default function VillagePage() {
                     Attack!
                   </Button>
                   <Button
-                    onClick={() => router.push('/battles')}
+                    onClick={() => setShowWarRoom(true)}
                     className="w-full"
                     variant="outline"
                   >
                     <History className="mr-2 h-4 w-4" />
-                    Battle History
+                    War Room
                   </Button>
                 </CardContent>
               </Card>
@@ -526,6 +528,12 @@ export default function VillagePage() {
           onClose={() => setShowBuildingShop(false)}
         />
       )}
+
+      {/* War Room Modal */}
+      <WarRoomModal
+        isOpen={showWarRoom}
+        onClose={() => setShowWarRoom(false)}
+      />
     </div>
   );
 }
