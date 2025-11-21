@@ -50,19 +50,23 @@ export class BattlesGateway implements OnGatewayConnection, OnGatewayDisconnect,
     @Inject(forwardRef(() => BattlesService))
     private battlesService: BattlesService,
   ) {
-    // Set gateway reference in session manager for broadcasting
-    this.battleSessionManager.setGateway(this);
+    // Don't set gateway here - server isn't initialized yet!
   }
 
   afterInit(server: Server) {
-    this.server = server;
-    console.log('BattlesGateway initialized');
-    // Set gateway reference on service
+    console.log('BattlesGateway - WebSocket server initialized on /battles namespace');
+    // NOW set the gateway references - server is ready
+    this.battleSessionManager.setGateway(this);
     this.battlesService.setBattlesGateway(this);
   }
 
   handleConnection(client: Socket) {
     console.log(`WebSocket client connected: ${client.id}`);
+
+    // Ensure gateway is registered with session manager (failsafe if afterInit wasn't called)
+    if (this.battleSessionManager && this.server) {
+      this.battleSessionManager.setGateway(this);
+    }
   }
 
   handleDisconnect(client: Socket) {
