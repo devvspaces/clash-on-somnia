@@ -135,7 +135,7 @@ export function VillageCanvasPlacement({
   // Draw/update buildings when they change
   useEffect(() => {
     const app = appRef.current;
-    if (!app) return;
+    if (!app || !spritesLoaded) return; // Wait for sprites to load before rendering buildings
 
     // Remove old building containers
     buildingContainersRef.current.forEach((container, id) => {
@@ -195,7 +195,7 @@ export function VillageCanvasPlacement({
         }
       }
     });
-  }, [buildings, onBuildingMove]); // Remove selectedWalls from dependencies
+  }, [buildings, onBuildingMove, spritesLoaded]); // Added spritesLoaded to wait for assets
 
   const handleBuildingClick = (clickedBuilding: Building, isShiftClick: boolean) => {
     console.log('[Wall Select] Clicked building:', clickedBuilding.type, 'isShift:', isShiftClick, 'currentSelection:', selectedWalls.size);
@@ -474,6 +474,8 @@ function createBuildingContainer(
 
   const spriteConfig = getBuildingSprite(building.type as BuildingType);
   const texture = SpriteManager.getTextureSync(spriteConfig.path);
+
+  console.log(`[Sprite] Building ${building.type}: texture ${texture ? 'FOUND' : 'NOT FOUND'} for ${spriteConfig.path.split('/').pop()}`);
 
   if (texture) {
     // Use sprite rendering

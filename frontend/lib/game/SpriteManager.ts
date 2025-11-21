@@ -90,18 +90,25 @@ class SpriteManagerClass {
    */
   async preloadAssets(assetPaths: string[]): Promise<void> {
     this.loadingState = 'loading';
+    console.log(`📦 Starting to preload ${assetPaths.length} assets...`);
 
     try {
       const loadPromises = assetPaths.map(path =>
-        this.getTexture(path).catch(error => {
-          console.error(`Failed to preload asset: ${path}`, error);
-          return null; // Continue loading other assets even if one fails
-        })
+        this.getTexture(path)
+          .then(texture => {
+            console.log(`✓ Loaded: ${path.split('/').pop()}`);
+            return texture;
+          })
+          .catch(error => {
+            console.error(`✗ Failed to preload asset: ${path}`, error);
+            return null; // Continue loading other assets even if one fails
+          })
       );
 
       await Promise.all(loadPromises);
       this.loadingState = 'loaded';
-      console.log(`✅ Preloaded ${this.assetsLoaded.size} assets`);
+      console.log(`✅ Preloaded ${this.assetsLoaded.size} assets successfully`);
+      console.log('Cached textures:', Array.from(this.textureCache.keys()).map(k => k.split('/').pop()));
     } catch (error) {
       this.loadingState = 'error';
       console.error('Error preloading assets:', error);
