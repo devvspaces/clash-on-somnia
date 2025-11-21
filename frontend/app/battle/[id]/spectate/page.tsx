@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { Application, Container, Graphics, Text } from 'pixi.js';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -20,6 +20,7 @@ import {
 } from '@/lib/socket';
 import { ArrowLeft, Eye, Users, Clock, Home } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { BUILDING_CONFIGS, BuildingType } from '@/lib/config/buildingsData';
 
 // Troop rendering data
 interface TroopSprite {
@@ -41,6 +42,7 @@ interface BuildingSprite {
   health: number;
   maxHealth: number;
   healthBar?: Graphics;
+  width: number; // Store width for health bar rendering
 }
 
 // Grid and rendering constants
@@ -52,7 +54,9 @@ const CANVAS_HEIGHT = GRID_SIZE * TILE_SIZE;
 export default function SpectateBattlePage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const battleId = params.id as string;
+  const returnTo = searchParams.get('returnTo') || '/';
   const { isAuthenticated } = useAuthStore();
 
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -222,15 +226,21 @@ export default function SpectateBattlePage() {
 
     const buildingContainer = new Container();
 
+    // Get building config to determine size
+    const buildingType = building.type.toLowerCase() as BuildingType;
+    const config = BUILDING_CONFIGS[buildingType];
+    const buildingWidth = config ? config.size.width * TILE_SIZE : 2 * TILE_SIZE;
+    const buildingHeight = config ? config.size.height * TILE_SIZE : 2 * TILE_SIZE;
+
     // Create building sprite (simple rectangle)
     const sprite = new Graphics();
     sprite.beginFill(getBuildingColor(building.type));
-    sprite.drawRect(0, 0, 2 * TILE_SIZE, 2 * TILE_SIZE);
+    sprite.drawRect(0, 0, buildingWidth, buildingHeight);
     sprite.endFill();
 
     // Add border
     sprite.lineStyle(1, 0x000000, 0.5);
-    sprite.drawRect(0, 0, 2 * TILE_SIZE, 2 * TILE_SIZE);
+    sprite.drawRect(0, 0, buildingWidth, buildingHeight);
 
     buildingContainer.addChild(sprite);
 
@@ -239,7 +249,7 @@ export default function SpectateBattlePage() {
       fontSize: 8,
       fill: 0xffffff,
     });
-    label.position.set(TILE_SIZE, TILE_SIZE);
+    label.position.set(buildingWidth / 2, buildingHeight / 2);
     label.anchor.set(0.5);
     buildingContainer.addChild(label);
 
@@ -249,7 +259,7 @@ export default function SpectateBattlePage() {
     buildingsLayerRef.current.addChild(buildingContainer);
 
     // Create health bar
-    const healthBar = createHealthBar(building.health, building.maxHealth, 2 * TILE_SIZE);
+    const healthBar = createHealthBar(building.health, building.maxHealth, buildingWidth);
     healthBar.position.set(building.position.x * TILE_SIZE, (building.position.y - 0.5) * TILE_SIZE);
     buildingsLayerRef.current.addChild(healthBar);
 
@@ -261,6 +271,7 @@ export default function SpectateBattlePage() {
       health: building.health,
       maxHealth: building.maxHealth,
       healthBar,
+      width: buildingWidth,
     });
   };
 
@@ -274,6 +285,9 @@ export default function SpectateBattlePage() {
         break;
       case 'TROOP_MOVE':
         handleTroopMove(event.data);
+        break;
+      case 'TROOP_ATTACK':
+        handleTroopAttacked(event.data);
         break;
       case 'BUILDING_ATTACK':
         handleBuildingAttack(event.data);
@@ -335,7 +349,17 @@ export default function SpectateBattlePage() {
   // Handle troop move
   const handleTroopMove = (data: any) => {
     const troopSprite = troopSpritesRef.current.get(data.troopId);
-    if (!troopSprite) return;
+    if (!troopSprite) {
+      console.warn('[Spectate] TROOP_MOVE for unknown troop:', data.troopId, 'Creating it now...');
+      // Troop spawned before spectator joined - create it dynamically
+      handleTroopSpawn({
+        troopId: data.troopId,
+        troopType: 'BARBARIAN', // Default type, we don't know the actual type
+        position: data.to,
+        health: 100, // Default health
+      });
+      return;
+    }
 
     troopSprite.sprite.position.set(
       data.to.x * TILE_SIZE + TILE_SIZE / 2,
@@ -356,7 +380,7 @@ export default function SpectateBattlePage() {
     buildingSprite.health = data.remainingHealth;
 
     buildingSprite.healthBar.clear();
-    const barWidth = 2 * TILE_SIZE;
+    const barWidth = buildingSprite.width; // Use actual building width
     const barHeight = 3;
     const healthPercent = buildingSprite.health / buildingSprite.maxHealth;
 
@@ -369,6 +393,43 @@ export default function SpectateBattlePage() {
     );
     buildingSprite.healthBar.drawRect(0, 0, barWidth * healthPercent, barHeight);
     buildingSprite.healthBar.endFill();
+
+    // Show projectile for ranged attacks (archers) or melee effect for melee troops (barbarians)
+    if (data.projectile) {
+      createProjectile(data.projectile.from, data.projectile.to, data.troopType);
+    } else {
+      // Melee attack - show slash effect at building
+      createMeleeEffect(buildingSprite.position);
+    }
+  };
+
+  // Handle troop attacked event
+  const handleTroopAttacked = (data: any) => {
+    const troopSprite = troopSpritesRef.current.get(data.troopId);
+    if (!troopSprite) return;
+
+    troopSprite.health = data.remainingHealth;
+
+    if (troopSprite.healthBar) {
+      troopSprite.healthBar.clear();
+      const barWidth = TILE_SIZE;
+      const barHeight = 3;
+      const healthPercent = troopSprite.health / troopSprite.maxHealth;
+
+      troopSprite.healthBar.beginFill(0x000000, 0.5);
+      troopSprite.healthBar.drawRect(0, 0, barWidth, barHeight);
+      troopSprite.healthBar.endFill();
+
+      troopSprite.healthBar.beginFill(
+        healthPercent > 0.5 ? 0x2ecc71 : healthPercent > 0.25 ? 0xf39c12 : 0xe74c3c
+      );
+      troopSprite.healthBar.drawRect(0, 0, barWidth * healthPercent, barHeight);
+      troopSprite.healthBar.endFill();
+    }
+
+    if (data.projectile) {
+      createProjectile(data.projectile.from, data.projectile.to);
+    }
   };
 
   // Handle building destroyed
@@ -392,6 +453,92 @@ export default function SpectateBattlePage() {
       troopSprite.healthBar.destroy();
     }
     troopSpritesRef.current.delete(data.troopId);
+  };
+
+  // Create projectile effect for ranged attacks
+  const createProjectile = (from: { x: number; y: number }, to: { x: number; y: number }, troopType?: string) => {
+    if (!effectsLayerRef.current) return;
+
+    const projectile = new Graphics();
+
+    // Different projectiles for different troop types
+    if (troopType === 'ARCHER') {
+      // Arrow - thin line with arrowhead
+      projectile.lineStyle(2, 0x8b4513, 1); // brown arrow
+      projectile.moveTo(0, 0);
+      projectile.lineTo(8, 0);
+      // Arrowhead
+      projectile.lineTo(6, -2);
+      projectile.moveTo(8, 0);
+      projectile.lineTo(6, 2);
+
+      // Rotate arrow to face target
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      projectile.rotation = Math.atan2(dy, dx);
+    } else {
+      // Default projectile (yellow ball for defense buildings)
+      projectile.beginFill(0xffff00);
+      projectile.drawCircle(0, 0, 3);
+      projectile.endFill();
+    }
+
+    projectile.position.set(from.x * TILE_SIZE + TILE_SIZE / 2, from.y * TILE_SIZE + TILE_SIZE / 2);
+    effectsLayerRef.current.addChild(projectile);
+
+    const duration = 300;
+    const startTime = Date.now();
+
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      projectile.position.set(
+        (from.x + (to.x - from.x) * progress) * TILE_SIZE + TILE_SIZE / 2,
+        (from.y + (to.y - from.y) * progress) * TILE_SIZE + TILE_SIZE / 2
+      );
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        projectile.destroy();
+      }
+    };
+
+    animate();
+  };
+
+  // Create melee attack effect
+  const createMeleeEffect = (position: { x: number; y: number }) => {
+    if (!effectsLayerRef.current) return;
+
+    const slash = new Graphics();
+
+    // Draw a slash effect (curved line)
+    slash.lineStyle(3, 0xff0000, 0.8);
+    slash.arc(0, 0, TILE_SIZE, -Math.PI / 4, Math.PI / 4);
+
+    slash.position.set(position.x * TILE_SIZE + TILE_SIZE, position.y * TILE_SIZE + TILE_SIZE);
+    effectsLayerRef.current.addChild(slash);
+
+    const duration = 200;
+    const startTime = Date.now();
+
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = elapsed / duration;
+
+      slash.alpha = 1 - progress;
+      slash.rotation = progress * Math.PI / 2; // Rotate as it fades
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        slash.destroy();
+      }
+    };
+
+    animate();
   };
 
   // Connect to WebSocket for live battles (public spectate socket, no auth required)
@@ -497,7 +644,9 @@ export default function SpectateBattlePage() {
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-4">Battle not found</h2>
-          <Button onClick={() => router.push('/')}>Return Home</Button>
+          <Button onClick={() => router.push(returnTo)}>
+            {returnTo === '/war-room' || returnTo === '/village' ? 'Back to Village' : 'Return Home'}
+          </Button>
         </div>
       </div>
     );
@@ -511,9 +660,9 @@ export default function SpectateBattlePage() {
       <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Button variant="outline" onClick={() => router.push('/')}>
+            <Button variant="outline" onClick={() => router.push(returnTo)}>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Home
+              {returnTo === '/war-room' || returnTo === '/village' ? 'Back to Village' : 'Back to Home'}
             </Button>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Eye className="w-6 h-6 text-primary" />

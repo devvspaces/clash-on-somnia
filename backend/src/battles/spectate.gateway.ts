@@ -57,6 +57,11 @@ export class SpectateGateway implements OnGatewayInit, OnGatewayConnection, OnGa
 
   handleConnection(client: Socket) {
     console.log(`[Spectate] Client connected: ${client.id}`);
+
+    // Ensure gateway is registered with session manager (failsafe if afterInit wasn't called)
+    if (this.battleSessionManager) {
+      this.battleSessionManager.setSpectateGateway(this);
+    }
   }
 
   handleDisconnect(client: Socket) {
@@ -90,6 +95,16 @@ export class SpectateGateway implements OnGatewayInit, OnGatewayConnection, OnGa
 
     // Get battle session to send initial state
     const session = this.battleSessionManager.getSession(battleId);
+    console.log(`[Spectate] Session found: ${!!session}, Troops count: ${session?.troops?.length || 0}, Buildings count: ${session?.buildings?.length || 0}`);
+    if (session && session.troops.length > 0) {
+      console.log(`[Spectate] First troop:`, {
+        id: session.troops[0].id,
+        type: session.troops[0].type,
+        position: session.troops[0].position,
+        health: session.troops[0].health,
+        isAlive: session.troops[0].isAlive,
+      });
+    }
 
     // Join the socket.io room
     client.join(battleId);
@@ -104,7 +119,7 @@ export class SpectateGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     console.log(`[Spectate] Client ${client.id} joined battle ${battleId}. Total spectators: ${this.battleSpectators.get(battleId)!.size}`);
 
     // Return battle session data for spectators to render
-    return {
+    const response = {
       success: true,
       message: 'Joined battle as spectator',
       isSpectator: true,
@@ -129,6 +144,10 @@ export class SpectateGateway implements OnGatewayInit, OnGatewayConnection, OnGa
         destructionPercentage: session.destructionPercentage,
       } : null,
     };
+
+    console.log(`[Spectate] Sending response with ${response.session?.troops?.length || 0} troops and ${response.session?.buildings?.length || 0} buildings`);
+
+    return response;
   }
 
   /**
@@ -157,6 +176,10 @@ export class SpectateGateway implements OnGatewayInit, OnGatewayConnection, OnGa
    * Broadcast a battle event to all spectators in a battle room
    */
   broadcastBattleEvent(battleId: string, event: BattleEvent) {
+    if (!this.server) {
+      console.warn(`[Spectate] Cannot broadcast ${event.type} - server not initialized`);
+      return;
+    }
     const spectatorCount = this.battleSpectators.get(battleId)?.size || 0;
     console.log(`[Spectate] Broadcasting ${event.type} to battle ${battleId} (${spectatorCount} spectators)`);
     this.server.to(battleId).emit('battleEvent', event);
@@ -166,6 +189,10 @@ export class SpectateGateway implements OnGatewayInit, OnGatewayConnection, OnGa
    * Broadcast battle end event to spectators
    */
   broadcastBattleEnd(battleId: string, result: any) {
+    if (!this.server) {
+      console.warn(`[Spectate] Cannot broadcast battle end - server not initialized`);
+      return;
+    }
     console.log(`[Spectate] Broadcasting battle end to ${battleId}`);
     this.server.to(battleId).emit('battleEnd', result);
   }

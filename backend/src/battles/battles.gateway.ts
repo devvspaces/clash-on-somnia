@@ -4,15 +4,17 @@ import {
   SubscribeMessage,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
   ConnectedSocket,
   MessageBody,
   WsException,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { UseGuards, Inject } from '@nestjs/common';
+import { UseGuards, Inject, forwardRef } from '@nestjs/common';
 import { WsJwtGuard } from './guards/ws-jwt.guard';
 import { BattleSessionManager } from './battle-session.manager';
 import { TROOP_CONFIGS, TroopType } from '../common/config/troops.config';
+import { BattlesService } from './battles.service';
 
 export interface BattleEvent {
   type: 'TROOP_SPAWN' | 'TROOP_MOVE' | 'TROOP_ATTACK' | 'TROOP_DEATH' | 'BUILDING_ATTACK' | 'BUILDING_DESTROYED' | 'BATTLE_END';
@@ -33,21 +35,38 @@ export interface DeployTroopPayload {
   },
   namespace: '/battles',
 })
-export class BattlesGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class BattlesGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
   @WebSocketServer()
   server: Server;
 
   // Track which users are in which battles
   private userBattles = new Map<string, string>(); // socketId -> battleId
   private battleRooms = new Map<string, Set<string>>(); // battleId -> Set<socketId>
+  // Track user connections for notifications (userId -> Set<socketId>)
+  private userConnections = new Map<string, Set<string>>();
 
-  constructor(private battleSessionManager: BattleSessionManager) {
-    // Set gateway reference in session manager for broadcasting
+  constructor(
+    private battleSessionManager: BattleSessionManager,
+    @Inject(forwardRef(() => BattlesService))
+    private battlesService: BattlesService,
+  ) {
+    // Don't set gateway here - server isn't initialized yet!
+  }
+
+  afterInit(server: Server) {
+    console.log('BattlesGateway - WebSocket server initialized on /battles namespace');
+    // NOW set the gateway references - server is ready
     this.battleSessionManager.setGateway(this);
+    this.battlesService.setBattlesGateway(this);
   }
 
   handleConnection(client: Socket) {
     console.log(`WebSocket client connected: ${client.id}`);
+
+    // Ensure gateway is registered with session manager (failsafe if afterInit wasn't called)
+    if (this.battleSessionManager && this.server) {
+      this.battleSessionManager.setGateway(this);
+    }
   }
 
   handleDisconnect(client: Socket) {
@@ -64,6 +83,18 @@ export class BattlesGateway implements OnGatewayConnection, OnGatewayDisconnect 
         }
       }
       this.userBattles.delete(client.id);
+    }
+
+    // Clean up from user connections
+    const userId = (client as any).userId;
+    if (userId) {
+      const connections = this.userConnections.get(userId);
+      if (connections) {
+        connections.delete(client.id);
+        if (connections.size === 0) {
+          this.userConnections.delete(userId);
+        }
+      }
     }
   }
 
@@ -219,9 +250,76 @@ export class BattlesGateway implements OnGatewayConnection, OnGatewayDisconnect 
   }
 
   /**
+   * Register for attack notifications
+   */
+  @SubscribeMessage('registerForNotifications')
+  @UseGuards(WsJwtGuard)
+  async handleRegisterNotifications(@ConnectedSocket() client: Socket) {
+    const user = (client as any).user;
+    const userId = user?.userId;
+
+    if (!userId) {
+      throw new WsException('User not authenticated');
+    }
+
+    console.log(`Registering user ${userId} for attack notifications on socket ${client.id}`);
+
+    // Track this connection for the user
+    if (!this.userConnections.has(userId)) {
+      this.userConnections.set(userId, new Set());
+    }
+    this.userConnections.get(userId)!.add(client.id);
+    (client as any).userId = userId;
+
+    return { success: true, message: 'Registered for notifications' };
+  }
+
+  /**
+   * Notify a defender that their village is under attack
+   * Called by the battle service when a battle starts
+   */
+  notifyDefenderUnderAttack(defenderId: string, battleData: {
+    battleId: string;
+    attackerVillageId: string;
+    attackerVillageName: string;
+    defenderVillageId: string;
+  }) {
+    if (!this.server) {
+      console.warn(`Cannot notify defender - server not initialized`);
+      return;
+    }
+
+    const connections = this.userConnections.get(defenderId);
+
+    if (!connections || connections.size === 0) {
+      console.log(`Defender ${defenderId} not online for attack notification`);
+      return;
+    }
+
+    console.log(`Notifying defender ${defenderId} of attack (${connections.size} connections)`);
+
+    // Send notification to all defender's connected clients
+    connections.forEach(socketId => {
+      this.server.to(socketId).emit('attackNotification', {
+        type: 'UNDER_ATTACK',
+        message: `Your village is under attack by ${battleData.attackerVillageName}!`,
+        battleId: battleData.battleId,
+        attackerVillageId: battleData.attackerVillageId,
+        attackerVillageName: battleData.attackerVillageName,
+        defenderVillageId: battleData.defenderVillageId,
+        timestamp: Date.now(),
+      });
+    });
+  }
+
+  /**
    * Broadcast a battle event to all clients in a battle room
    */
   broadcastBattleEvent(battleId: string, event: BattleEvent) {
+    if (!this.server) {
+      console.warn(`Cannot broadcast ${event.type} - server not initialized`);
+      return;
+    }
     const roomSize = this.battleRooms.get(battleId)?.size || 0;
     console.log(`Broadcasting ${event.type} to battle ${battleId} (${roomSize} clients in room)`);
     this.server.to(battleId).emit('battleEvent', event);
@@ -231,6 +329,10 @@ export class BattlesGateway implements OnGatewayConnection, OnGatewayDisconnect 
    * Broadcast battle end event
    */
   broadcastBattleEnd(battleId: string, result: any) {
+    if (!this.server) {
+      console.warn(`Cannot broadcast battle end - server not initialized`);
+      return;
+    }
     this.server.to(battleId).emit('battleEnd', result);
   }
 

@@ -162,6 +162,39 @@ export class BattlesController {
   }
 
   /**
+   * GET /battles/defenses
+   * Get defense history for the current user (attacks against user's village)
+   */
+  @Get('defenses')
+  @UseGuards(JwtAuthGuard)
+  async getDefenses(@Request() req, @Query('limit') limit?: string) {
+    const villageId = req.user.villageId;
+    const limitNum = limit ? parseInt(limit, 10) : 20;
+
+    console.log('getDefenses - villageId:', villageId, 'limit:', limitNum);
+
+    if (!villageId) {
+      throw new BadRequestException('Village ID not found in user session');
+    }
+
+    const history = await this.battlesService.getDefenseHistory(villageId, limitNum);
+
+    return {
+      battles: history.map((battle) => ({
+        id: battle.id,
+        attackerId: battle.attackerId,
+        defenderId: battle.defenderId,
+        destructionPercentage: battle.destructionPercentage,
+        stars: battle.stars,
+        lootGold: battle.lootGold,
+        lootElixir: battle.lootElixir,
+        status: battle.status,
+        createdAt: battle.createdAt,
+      })),
+    };
+  }
+
+  /**
    * GET /battles/:id
    * Get battle details and replay data
    */
@@ -198,7 +231,7 @@ export class BattlesController {
 
   /**
    * GET /battles
-   * Get battle history for the current user
+   * Get battle history for the current user (attacks made by user)
    */
   @Get()
   @UseGuards(JwtAuthGuard)
@@ -224,6 +257,7 @@ export class BattlesController {
         stars: battle.stars,
         lootGold: battle.lootGold,
         lootElixir: battle.lootElixir,
+        status: battle.status,
         createdAt: battle.createdAt,
       })),
     };
