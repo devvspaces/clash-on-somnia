@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { Application, Container, Graphics, Text } from 'pixi.js';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -52,7 +52,9 @@ const CANVAS_HEIGHT = GRID_SIZE * TILE_SIZE;
 export default function SpectateBattlePage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const battleId = params.id as string;
+  const returnTo = searchParams.get('returnTo') || '/';
   const { isAuthenticated } = useAuthStore();
 
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -633,7 +635,9 @@ export default function SpectateBattlePage() {
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-4">Battle not found</h2>
-          <Button onClick={() => router.push('/')}>Return Home</Button>
+          <Button onClick={() => router.push(returnTo)}>
+            {returnTo === '/war-room' ? 'Back to War Room' : 'Return Home'}
+          </Button>
         </div>
       </div>
     );
@@ -647,9 +651,9 @@ export default function SpectateBattlePage() {
       <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Button variant="outline" onClick={() => router.push('/')}>
+            <Button variant="outline" onClick={() => router.push(returnTo)}>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Home
+              {returnTo === '/war-room' ? 'Back to War Room' : 'Back to Home'}
             </Button>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Eye className="w-6 h-6 text-primary" />

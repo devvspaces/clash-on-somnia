@@ -101,7 +101,7 @@ export default function WarRoomPage() {
           action: (
             <Button
               size="sm"
-              onClick={() => router.push(`/battle/${notification.battleId}/spectate`)}
+              onClick={() => router.push(`/battle/${notification.battleId}/spectate?returnTo=/war-room`)}
             >
               <Eye className="mr-1 h-3 w-3" />
               Spectate
@@ -298,7 +298,7 @@ export default function WarRoomPage() {
             </Badge>
             <Button
               size="sm"
-              onClick={() => router.push(`/battle/${battle.id}/spectate`)}
+              onClick={() => router.push(`/battle/${battle.id}/spectate?returnTo=/war-room`)}
               className="bg-orange-500 hover:bg-orange-600"
             >
               <Eye className="mr-2 h-4 w-4" />
