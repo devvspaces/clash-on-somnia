@@ -5,7 +5,8 @@ import * as PIXI from 'pixi.js';
 import { Building } from '@/lib/api';
 import { getBuildingVisual } from '@/lib/config/buildings';
 import { SpriteManager } from '@/lib/game/SpriteManager';
-import { getBuildingSprite, CRITICAL_ASSETS, BuildingType } from '@/lib/config/spriteAssets';
+import { getBuildingSprite, CRITICAL_ASSETS, LAZY_LOAD_ASSETS, BuildingType } from '@/lib/config/spriteAssets';
+import { DecorationManager, type Decoration } from '@/lib/game/DecorationManager';
 
 interface VillageCanvasProps {
   buildings: Building[];
@@ -20,6 +21,7 @@ export function VillageCanvas({ buildings, onBuildingClick }: VillageCanvasProps
   const canvasRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<PIXI.Application | null>(null);
   const [spritesLoaded, setSpritesLoaded] = useState(false);
+  const [decorations, setDecorations] = useState<Decoration[]>([]);
 
   // Preload sprites
   useEffect(() => {
@@ -27,6 +29,9 @@ export function VillageCanvas({ buildings, onBuildingClick }: VillageCanvasProps
       try {
         await SpriteManager.preloadAssets(CRITICAL_ASSETS);
         setSpritesLoaded(true);
+
+        // Lazy load decoration assets in background
+        await SpriteManager.preloadAssets(LAZY_LOAD_ASSETS);
       } catch (error) {
         console.error('Error preloading sprites:', error);
         setSpritesLoaded(true); // Continue anyway with fallback
@@ -34,6 +39,21 @@ export function VillageCanvas({ buildings, onBuildingClick }: VillageCanvasProps
     };
     preloadSprites();
   }, []);
+
+  // Generate decorations once buildings are available
+  useEffect(() => {
+    if (buildings.length > 0 && decorations.length === 0) {
+      const generatedDecorations = DecorationManager.generateDecorations({
+        gridWidth: GRID_SIZE,
+        gridHeight: GRID_SIZE,
+        density: 0.12,
+        seed: 42,
+        buildings,
+        categories: ['tree', 'plant'],
+      });
+      setDecorations(generatedDecorations);
+    }
+  }, [buildings, decorations.length]);
 
   useEffect(() => {
     if (!canvasRef.current || !spritesLoaded) return;
@@ -52,6 +72,11 @@ export function VillageCanvas({ buildings, onBuildingClick }: VillageCanvasProps
     // Draw grid
     drawGrid(app);
 
+    // Draw decorations (after grid, before buildings)
+    decorations.forEach((decoration) => {
+      drawDecoration(app, decoration);
+    });
+
     // Draw buildings
     buildings.forEach((building) => {
       drawBuilding(app, building, onBuildingClick);
@@ -61,7 +86,7 @@ export function VillageCanvas({ buildings, onBuildingClick }: VillageCanvasProps
     return () => {
       app.destroy(true, { children: true });
     };
-  }, [buildings, onBuildingClick, spritesLoaded]);
+  }, [buildings, onBuildingClick, spritesLoaded, decorations]);
 
   return (
     <div className="flex items-center justify-center rounded-lg border-4 border-amber-600 bg-green-800 p-4 shadow-2xl">
@@ -194,4 +219,38 @@ function drawBuilding(
   }
 
   app.stage.addChild(container);
+}
+
+function drawDecoration(app: PIXI.Application, decoration: Decoration) {
+  const texture = SpriteManager.getTextureSync(decoration.config.path);
+  if (!texture) {
+    // Decoration sprite not loaded yet, skip
+    return;
+  }
+
+  const sprite = new PIXI.Sprite(texture);
+  const x = decoration.positionX * TILE_SIZE;
+  const y = decoration.positionY * TILE_SIZE;
+
+  // Calculate scale to fit grid size
+  const targetSize = TILE_SIZE * decoration.config.gridSize;
+  const scale = Math.min(
+    targetSize / texture.width,
+    targetSize / texture.height
+  );
+
+  sprite.scale.set(scale, scale);
+  sprite.anchor.set(
+    decoration.config.anchor?.x || 0.5,
+    decoration.config.anchor?.y || 0.5
+  );
+
+  // Position sprite (center of occupied tiles)
+  sprite.x = x + (TILE_SIZE * decoration.config.gridSize) / 2;
+  sprite.y = y + (TILE_SIZE * decoration.config.gridSize) / 2;
+
+  // Add slight transparency for better blending
+  sprite.alpha = 0.85;
+
+  app.stage.addChild(sprite);
 }

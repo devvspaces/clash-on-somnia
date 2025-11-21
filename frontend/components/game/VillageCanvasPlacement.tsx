@@ -6,7 +6,8 @@ import { Building } from '@/lib/api';
 import { getBuildingVisual } from '@/lib/config/buildings';
 import { BuildingType, getBuildingConfig } from '@/lib/config/buildingsData';
 import { SpriteManager } from '@/lib/game/SpriteManager';
-import { getBuildingSprite, calculateSpriteScale, CRITICAL_ASSETS } from '@/lib/config/spriteAssets';
+import { getBuildingSprite, calculateSpriteScale, CRITICAL_ASSETS, LAZY_LOAD_ASSETS } from '@/lib/config/spriteAssets';
+import { DecorationManager, type Decoration } from '@/lib/game/DecorationManager';
 
 interface VillageCanvasPlacementProps {
   buildings: Building[];
@@ -33,6 +34,7 @@ export function VillageCanvasPlacement({
   const canvasRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<PIXI.Application | null>(null);
   const buildingContainersRef = useRef<Map<string, PIXI.Container>>(new Map());
+  const decorationContainerRef = useRef<PIXI.Container | null>(null);
   const previewRef = useRef<PIXI.Graphics | null>(null);
   const suggestedPreviewRef = useRef<PIXI.Graphics | null>(null);
   const draggedBuildingRef = useRef<{ building: Building; startX: number; startY: number } | null>(null);
@@ -41,6 +43,7 @@ export function VillageCanvasPlacement({
   const [selectedWalls, setSelectedWalls] = useState<Set<string>>(new Set());
   const selectionGraphicsRef = useRef<Map<string, PIXI.Graphics>>(new Map());
   const [spritesLoaded, setSpritesLoaded] = useState(false);
+  const [decorations, setDecorations] = useState<Decoration[]>([]);
 
   // Preload all sprites ONCE on mount
   useEffect(() => {
@@ -50,6 +53,11 @@ export function VillageCanvasPlacement({
         await SpriteManager.preloadAssets(CRITICAL_ASSETS);
         setSpritesLoaded(true);
         console.log('✅ Sprites loaded successfully');
+
+        // Lazy load decoration assets in background
+        console.log('🌳 Lazy loading decoration assets...');
+        await SpriteManager.preloadAssets(LAZY_LOAD_ASSETS);
+        console.log('✅ Decoration assets loaded');
       } catch (error) {
         console.error('❌ Error preloading sprites:', error);
         // Fallback: use colored rectangles if sprites fail to load
@@ -59,6 +67,21 @@ export function VillageCanvasPlacement({
 
     preloadSprites();
   }, []);
+
+  // Generate decorations once buildings are available
+  useEffect(() => {
+    if (buildings.length > 0 && decorations.length === 0) {
+      const generatedDecorations = DecorationManager.generateDecorations({
+        gridWidth: GRID_SIZE,
+        gridHeight: GRID_SIZE,
+        density: 0.12, // 12% of tiles have decorations
+        seed: 42, // Consistent seed for same layout
+        buildings,
+        categories: ['tree', 'plant'], // Only trees and plants, no rocks
+      });
+      setDecorations(generatedDecorations);
+    }
+  }, [buildings, decorations.length]);
 
   // Initialize Pixi app ONCE
   useEffect(() => {
@@ -96,6 +119,64 @@ export function VillageCanvasPlacement({
       appRef.current = null;
     };
   }, []);
+
+  // Render decorations on canvas
+  useEffect(() => {
+    const app = appRef.current;
+    if (!app || decorations.length === 0) return;
+
+    // Remove old decoration container if it exists
+    if (decorationContainerRef.current) {
+      app.stage.removeChild(decorationContainerRef.current);
+      decorationContainerRef.current.destroy({ children: true });
+    }
+
+    // Create new decoration container
+    const decorationContainer = new PIXI.Container();
+    decorationContainer.name = 'decorations';
+    decorationContainerRef.current = decorationContainer;
+
+    // Render each decoration
+    decorations.forEach(decoration => {
+      const texture = SpriteManager.getTextureSync(decoration.config.path);
+      if (!texture) {
+        // Decoration sprite not loaded yet, skip
+        return;
+      }
+
+      const sprite = new PIXI.Sprite(texture);
+      const x = decoration.positionX * TILE_SIZE;
+      const y = decoration.positionY * TILE_SIZE;
+
+      // Calculate scale to fit grid size
+      const targetSize = TILE_SIZE * decoration.config.gridSize;
+      const scale = Math.min(
+        targetSize / texture.width,
+        targetSize / texture.height
+      );
+
+      sprite.scale.set(scale, scale);
+      sprite.anchor.set(
+        decoration.config.anchor?.x || 0.5,
+        decoration.config.anchor?.y || 0.5
+      );
+
+      // Position sprite (center of occupied tiles)
+      sprite.x = x + (TILE_SIZE * decoration.config.gridSize) / 2;
+      sprite.y = y + (TILE_SIZE * decoration.config.gridSize) / 2;
+
+      // Add slight transparency for better blending
+      sprite.alpha = 0.85;
+
+      decorationContainer.addChild(sprite);
+    });
+
+    // Add decoration container to stage (after grid, before buildings)
+    // Insert at index 1 (after grid at index 0)
+    app.stage.addChildAt(decorationContainer, 1);
+
+    console.log(`🎨 Rendered ${decorations.length} decorations on canvas`);
+  }, [decorations]);
 
   // Draw selection highlights for selected walls
   useEffect(() => {
