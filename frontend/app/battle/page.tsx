@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Application, Container, Graphics, Text } from 'pixi.js';
+import { Application, Container, Graphics, Text, Sprite as PIXISprite } from 'pixi.js';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Navbar } from '@/components/layout/Navbar';
@@ -23,6 +23,8 @@ import {
 import { Sword, Shield, Target, X, Home, ArrowLeft, Clock } from 'lucide-react';
 import { BattleSummary } from '@/components/game/BattleSummary';
 import { BUILDING_CONFIGS, BuildingType } from '@/lib/config/buildingsData';
+import { SpriteManager } from '@/lib/game/SpriteManager';
+import { getBuildingSprite, CRITICAL_ASSETS } from '@/lib/config/spriteAssets';
 
 // Troop rendering data
 interface TroopSprite {
@@ -78,10 +80,25 @@ export default function BattlePage() {
   const [battleEndResult, setBattleEndResult] = useState<any>(null);
   const [timeRemaining, setTimeRemaining] = useState(180); // 3 minutes in seconds
   const [battleStartTime, setBattleStartTime] = useState<number | null>(null);
+  const [spritesLoaded, setSpritesLoaded] = useState(false);
 
   // Store sprites
   const buildingSpritesRef = useRef<Map<string, BuildingSprite>>(new Map());
   const troopSpritesRef = useRef<Map<string, TroopSprite>>(new Map());
+
+  // Preload sprites on mount
+  useEffect(() => {
+    const preloadSprites = async () => {
+      try {
+        await SpriteManager.preloadAssets(CRITICAL_ASSETS);
+        setSpritesLoaded(true);
+      } catch (error) {
+        console.error('Error preloading battle sprites:', error);
+        setSpritesLoaded(true); // Continue with fallback
+      }
+    };
+    preloadSprites();
+  }, []);
 
   // Parse troops from URL params
   const troops = searchParams.get('troops')
@@ -192,17 +209,38 @@ export default function BattlePage() {
       const buildingWidth = config ? config.size.width * TILE_SIZE : 2 * TILE_SIZE;
       const buildingHeight = config ? config.size.height * TILE_SIZE : 2 * TILE_SIZE;
 
-      // Create building sprite (simple rectangle)
-      const sprite = new Graphics();
-      sprite.beginFill(getBuildingColor(building.type));
-      sprite.drawRect(0, 0, buildingWidth, buildingHeight);
-      sprite.endFill();
+      // Create building sprite or fallback to rectangle
+      const spriteConfig = getBuildingSprite(buildingType);
+      const texture = SpriteManager.getTextureSync(spriteConfig.path);
 
-      // Add border
-      sprite.lineStyle(1, 0x000000, 0.5);
-      sprite.drawRect(0, 0, buildingWidth, buildingHeight);
+      if (texture && spritesLoaded) {
+        // Use sprite rendering
+        const buildingSprite = new PIXISprite(texture);
 
-      buildingContainer.addChild(sprite);
+        // Calculate scale to fit the building size
+        const scaleX = buildingWidth / texture.width;
+        const scaleY = buildingHeight / texture.height;
+        const scale = Math.min(scaleX, scaleY) * (spriteConfig.scaleMultiplier || 1.0);
+
+        buildingSprite.scale.set(scale, scale);
+        buildingSprite.anchor.set(spriteConfig.anchor?.x || 0.5, spriteConfig.anchor?.y || 0.5);
+        buildingSprite.x = buildingWidth / 2;
+        buildingSprite.y = buildingHeight / 2 + (spriteConfig.yOffset || 0);
+
+        buildingContainer.addChild(buildingSprite);
+      } else {
+        // Fallback to colored rectangle
+        const sprite = new Graphics();
+        sprite.beginFill(getBuildingColor(building.type));
+        sprite.drawRect(0, 0, buildingWidth, buildingHeight);
+        sprite.endFill();
+
+        // Add border
+        sprite.lineStyle(1, 0x000000, 0.5);
+        sprite.drawRect(0, 0, buildingWidth, buildingHeight);
+
+        buildingContainer.addChild(sprite);
+      }
 
       // Add label
       const label = new Text(building.type.replace(/_/g, ' '), {

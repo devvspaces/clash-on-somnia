@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as PIXI from 'pixi.js';
 import { Building } from '@/lib/api';
 import { getBuildingVisual } from '@/lib/config/buildings';
+import { SpriteManager } from '@/lib/game/SpriteManager';
+import { getBuildingSprite, CRITICAL_ASSETS, BuildingType } from '@/lib/config/spriteAssets';
 
 interface VillageCanvasProps {
   buildings: Building[];
@@ -17,9 +19,24 @@ const CANVAS_SIZE = GRID_SIZE * TILE_SIZE; // 600px
 export function VillageCanvas({ buildings, onBuildingClick }: VillageCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<PIXI.Application | null>(null);
+  const [spritesLoaded, setSpritesLoaded] = useState(false);
+
+  // Preload sprites
+  useEffect(() => {
+    const preloadSprites = async () => {
+      try {
+        await SpriteManager.preloadAssets(CRITICAL_ASSETS);
+        setSpritesLoaded(true);
+      } catch (error) {
+        console.error('Error preloading sprites:', error);
+        setSpritesLoaded(true); // Continue anyway with fallback
+      }
+    };
+    preloadSprites();
+  }, []);
 
   useEffect(() => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || !spritesLoaded) return;
 
     // Initialize Pixi application
     const app = new PIXI.Application({
@@ -44,7 +61,7 @@ export function VillageCanvas({ buildings, onBuildingClick }: VillageCanvasProps
     return () => {
       app.destroy(true, { children: true });
     };
-  }, [buildings, onBuildingClick]);
+  }, [buildings, onBuildingClick, spritesLoaded]);
 
   return (
     <div className="flex items-center justify-center rounded-lg border-4 border-amber-600 bg-green-800 p-4 shadow-2xl">
@@ -106,13 +123,34 @@ function drawBuilding(
   shadow.endFill();
   container.addChild(shadow);
 
-  // Main building rectangle
-  const buildingRect = new PIXI.Graphics();
-  buildingRect.beginFill(color);
-  buildingRect.lineStyle(2, 0x000000, 0.5);
-  buildingRect.drawRoundedRect(0, 0, width, height, 4);
-  buildingRect.endFill();
-  container.addChild(buildingRect);
+  // Main building sprite (or fallback to rectangle)
+  const spriteConfig = getBuildingSprite(building.type as BuildingType);
+  const texture = SpriteManager.getTextureSync(spriteConfig.path);
+
+  if (texture) {
+    // Use sprite rendering
+    const buildingSprite = new PIXI.Sprite(texture);
+
+    // Calculate scale to fit the building size
+    const scaleX = width / texture.width;
+    const scaleY = height / texture.height;
+    const scale = Math.min(scaleX, scaleY) * (spriteConfig.scaleMultiplier || 1.0);
+
+    buildingSprite.scale.set(scale, scale);
+    buildingSprite.anchor.set(spriteConfig.anchor?.x || 0.5, spriteConfig.anchor?.y || 0.5);
+    buildingSprite.x = width / 2;
+    buildingSprite.y = height / 2 + (spriteConfig.yOffset || 0);
+
+    container.addChild(buildingSprite);
+  } else {
+    // Fallback to colored rectangle
+    const buildingRect = new PIXI.Graphics();
+    buildingRect.beginFill(color);
+    buildingRect.lineStyle(2, 0x000000, 0.5);
+    buildingRect.drawRoundedRect(0, 0, width, height, 4);
+    buildingRect.endFill();
+    container.addChild(buildingRect);
+  }
 
   // Health bar background
   const healthBarBg = new PIXI.Graphics();

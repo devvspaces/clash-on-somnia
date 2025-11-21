@@ -5,6 +5,8 @@ import * as PIXI from 'pixi.js';
 import { Building } from '@/lib/api';
 import { getBuildingVisual } from '@/lib/config/buildings';
 import { BuildingType, getBuildingConfig } from '@/lib/config/buildingsData';
+import { SpriteManager } from '@/lib/game/SpriteManager';
+import { getBuildingSprite, calculateSpriteScale, CRITICAL_ASSETS } from '@/lib/config/spriteAssets';
 
 interface VillageCanvasPlacementProps {
   buildings: Building[];
@@ -38,6 +40,25 @@ export function VillageCanvasPlacement({
   const wallPlacementHistoryRef = useRef<{x: number, y: number}[]>([]);
   const [selectedWalls, setSelectedWalls] = useState<Set<string>>(new Set());
   const selectionGraphicsRef = useRef<Map<string, PIXI.Graphics>>(new Map());
+  const [spritesLoaded, setSpritesLoaded] = useState(false);
+
+  // Preload all sprites ONCE on mount
+  useEffect(() => {
+    const preloadSprites = async () => {
+      try {
+        console.log('🎨 Preloading sprite assets...');
+        await SpriteManager.preloadAssets(CRITICAL_ASSETS);
+        setSpritesLoaded(true);
+        console.log('✅ Sprites loaded successfully');
+      } catch (error) {
+        console.error('❌ Error preloading sprites:', error);
+        // Fallback: use colored rectangles if sprites fail to load
+        setSpritesLoaded(true);
+      }
+    };
+
+    preloadSprites();
+  }, []);
 
   // Initialize Pixi app ONCE
   useEffect(() => {
@@ -447,13 +468,41 @@ function createBuildingContainer(
   shadow.endFill();
   container.addChild(shadow);
 
-  // Building rectangle
-  const buildingRect = new PIXI.Graphics();
-  buildingRect.beginFill(color);
-  buildingRect.lineStyle(2, 0x000000, 0.5);
-  buildingRect.drawRoundedRect(0, 0, width, height, 4);
-  buildingRect.endFill();
-  container.addChild(buildingRect);
+  // Building sprite (or fallback to rectangle)
+  let buildingSprite: PIXI.Sprite | null = null;
+  let buildingRect: PIXI.Graphics | null = null;
+
+  const spriteConfig = getBuildingSprite(building.type as BuildingType);
+  const texture = SpriteManager.getTextureSync(spriteConfig.path);
+
+  if (texture) {
+    // Use sprite rendering
+    buildingSprite = new PIXI.Sprite(texture);
+
+    // Calculate scale to fit the building size
+    const targetWidth = width;
+    const targetHeight = height;
+    const scaleX = targetWidth / texture.width;
+    const scaleY = targetHeight / texture.height;
+    const scale = Math.min(scaleX, scaleY) * (spriteConfig.scaleMultiplier || 1.0);
+
+    buildingSprite.scale.set(scale, scale);
+
+    // Center the sprite
+    buildingSprite.anchor.set(spriteConfig.anchor?.x || 0.5, spriteConfig.anchor?.y || 0.5);
+    buildingSprite.x = width / 2;
+    buildingSprite.y = height / 2 + (spriteConfig.yOffset || 0);
+
+    container.addChild(buildingSprite);
+  } else {
+    // Fallback to colored rectangle if sprite not loaded
+    buildingRect = new PIXI.Graphics();
+    buildingRect.beginFill(color);
+    buildingRect.lineStyle(2, 0x000000, 0.5);
+    buildingRect.drawRoundedRect(0, 0, width, height, 4);
+    buildingRect.endFill();
+    container.addChild(buildingRect);
+  }
 
   // Health bar
   const healthBarBg = new PIXI.Graphics();
@@ -494,13 +543,21 @@ function createBuildingContainer(
 
   // Interaction handlers
   container.on('pointerover', () => {
-    buildingRect.tint = 0xcccccc;
+    if (buildingSprite) {
+      buildingSprite.tint = 0xcccccc;
+    } else if (buildingRect) {
+      buildingRect.tint = 0xcccccc;
+    }
     label.visible = true; // Show label on hover
   });
 
   container.on('pointerout', () => {
     if (!isDragging) {
-      buildingRect.tint = 0xffffff;
+      if (buildingSprite) {
+        buildingSprite.tint = 0xffffff;
+      } else if (buildingRect) {
+        buildingRect.tint = 0xffffff;
+      }
       label.visible = selectedBuildingRef?.current?.id === building.id; // Hide unless selected
     }
   });
