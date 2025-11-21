@@ -12,6 +12,7 @@ import { BattleResult } from '@/components/game/BattleResult';
 import { WarRoomModal } from '@/components/WarRoomModal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { SlidePanel } from '@/components/ui/slide-panel';
 import { Building2, Users, Swords, Info, Plus, Trash2, History } from 'lucide-react';
 import { resourcesApi, buildingsApi, Building, ResourcesWithPending } from '@/lib/api';
 import { BattleSession } from '@/lib/api/battles';
@@ -250,12 +251,6 @@ export default function VillagePage() {
           <ArmyTraining onClose={() => setShowArmyTraining(false)} />
         ) : battleResult ? (
           <BattleResult result={battleResult} onClose={handleCloseBattleResult} />
-        ) : showBattlePrep ? (
-          <BattlePreparation
-            onBattleComplete={handleBattleComplete}
-            onStartRealtimeBattle={handleStartRealtimeBattle}
-            onCancel={() => setShowBattlePrep(false)}
-          />
         ) : (
           <>
             <div className="mb-6 flex items-center justify-between">
@@ -534,6 +529,19 @@ export default function VillagePage() {
         isOpen={showWarRoom}
         onClose={() => setShowWarRoom(false)}
       />
+
+      {/* Battle Preparation Slide Panel */}
+      <SlidePanel
+        isOpen={showBattlePrep}
+        onClose={() => setShowBattlePrep(false)}
+        width="500px"
+      >
+        <BattlePreparation
+          onBattleComplete={handleBattleComplete}
+          onStartRealtimeBattle={handleStartRealtimeBattle}
+          onCancel={() => setShowBattlePrep(false)}
+        />
+      </SlidePanel>
     </div>
   );
 }
