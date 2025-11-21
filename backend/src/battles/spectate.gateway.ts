@@ -176,6 +176,10 @@ export class SpectateGateway implements OnGatewayInit, OnGatewayConnection, OnGa
    * Broadcast a battle event to all spectators in a battle room
    */
   broadcastBattleEvent(battleId: string, event: BattleEvent) {
+    if (!this.server) {
+      console.warn(`[Spectate] Cannot broadcast ${event.type} - server not initialized`);
+      return;
+    }
     const spectatorCount = this.battleSpectators.get(battleId)?.size || 0;
     console.log(`[Spectate] Broadcasting ${event.type} to battle ${battleId} (${spectatorCount} spectators)`);
     this.server.to(battleId).emit('battleEvent', event);
@@ -185,6 +189,10 @@ export class SpectateGateway implements OnGatewayInit, OnGatewayConnection, OnGa
    * Broadcast battle end event to spectators
    */
   broadcastBattleEnd(battleId: string, result: any) {
+    if (!this.server) {
+      console.warn(`[Spectate] Cannot broadcast battle end - server not initialized`);
+      return;
+    }
     console.log(`[Spectate] Broadcasting battle end to ${battleId}`);
     this.server.to(battleId).emit('battleEnd', result);
   }
