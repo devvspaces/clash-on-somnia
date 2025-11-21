@@ -120,10 +120,20 @@ export const battlesApi = {
   },
 
   /**
-   * Get battle history
+   * Get battle history (attacks made by user)
    */
   getHistory: async (limit: number = 20): Promise<{ battles: BattleResult[] }> => {
     const response = await apiClient.get('/battles', {
+      params: { limit },
+    });
+    return response.data;
+  },
+
+  /**
+   * Get defense history (attacks against user's village)
+   */
+  getDefenses: async (limit: number = 20): Promise<{ battles: BattleResult[] }> => {
+    const response = await apiClient.get('/battles/defenses', {
       params: { limit },
     });
     return response.data;

@@ -150,6 +150,50 @@ export function offBattleEnd(callback: (result: any) => void) {
   socket.off('battleEnd', callback);
 }
 
+/**
+ * Register for attack notifications
+ */
+export function registerForNotifications(): Promise<any> {
+  return new Promise((resolve, reject) => {
+    if (!socket) {
+      reject(new Error('Socket not connected'));
+      return;
+    }
+
+    socket.emit('registerForNotifications', {}, (response: any) => {
+      if (response.success) {
+        console.log('Registered for attack notifications');
+        resolve(response);
+      } else {
+        reject(new Error(response.message || 'Failed to register for notifications'));
+      }
+    });
+  });
+}
+
+/**
+ * Listen to attack notifications
+ */
+export interface AttackNotification {
+  type: 'UNDER_ATTACK';
+  message: string;
+  battleId: string;
+  attackerVillageId: string;
+  attackerVillageName: string;
+  defenderVillageId: string;
+  timestamp: number;
+}
+
+export function onAttackNotification(callback: (notification: AttackNotification) => void) {
+  if (!socket) return;
+  socket.on('attackNotification', callback);
+}
+
+export function offAttackNotification(callback: (notification: AttackNotification) => void) {
+  if (!socket) return;
+  socket.off('attackNotification', callback);
+}
+
 // ============================================
 // SPECTATE SOCKET (Public, no auth required)
 // ============================================

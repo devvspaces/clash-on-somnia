@@ -59,6 +59,8 @@ interface BattleResult {
 
 @Injectable()
 export class BattlesService {
+  private battlesGateway: any; // Will be set after gateway initializes to avoid circular dependency
+
   constructor(
     @Inject(DATABASE_CONNECTION)
     private db: NodePgDatabase<typeof schema>,
@@ -66,6 +68,10 @@ export class BattlesService {
   ) {
     // Set this service on the session manager to allow it to update battle results
     this.battleSessionManager.setBattlesService(this);
+  }
+
+  setBattlesGateway(gateway: any) {
+    this.battlesGateway = gateway;
   }
 
   /**
@@ -453,7 +459,7 @@ export class BattlesService {
   }
 
   /**
-   * Get battle history for a village
+   * Get battle history for a village (attacks made by this village)
    */
   async getBattleHistory(villageId: string, limit: number = 20): Promise<Battle[]> {
     console.log('getBattleHistory - villageId:', villageId, 'limit:', limit);
@@ -471,6 +477,29 @@ export class BattlesService {
       .limit(limit);
 
     console.log('getBattleHistory - found battles:', history.length);
+
+    return history;
+  }
+
+  /**
+   * Get defense history for a village (attacks against this village)
+   */
+  async getDefenseHistory(villageId: string, limit: number = 20): Promise<Battle[]> {
+    console.log('getDefenseHistory - villageId:', villageId, 'limit:', limit);
+
+    if (!villageId) {
+      console.error('getDefenseHistory - villageId is undefined!');
+      return [];
+    }
+
+    const history = await this.db
+      .select()
+      .from(battles)
+      .where(eq(battles.defenderId, villageId))
+      .orderBy(desc(battles.createdAt))
+      .limit(limit);
+
+    console.log('getDefenseHistory - found battles:', history.length);
 
     return history;
   }
@@ -553,6 +582,17 @@ export class BattlesService {
     await this.consumeTroops(attackerVillageId, maxTroops);
     console.log('Troops consumed from army:', maxTroops);
 
+    // Get attacker's village to find attacker name
+    const attackerVillage = await this.db
+      .select()
+      .from(villages)
+      .where(eq(villages.id, attackerVillageId))
+      .limit(1);
+
+    if (!attackerVillage || attackerVillage.length === 0) {
+      throw new Error('Attacker village not found');
+    }
+
     // Get defender's village to find defender user
     const defenderVillage = await this.db
       .select()
@@ -616,6 +656,16 @@ export class BattlesService {
       buildingsWithConfigs,
       totalTroopCount,
     );
+
+    // Notify defender if they're online
+    if (this.battlesGateway) {
+      this.battlesGateway.notifyDefenderUnderAttack(defenderId, {
+        battleId: battleRecord.id,
+        attackerVillageId,
+        attackerVillageName: attackerVillage[0].name,
+        defenderVillageId,
+      });
+    }
 
     return {
       battleId: battleRecord.id,

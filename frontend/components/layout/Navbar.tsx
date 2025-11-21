@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore, useVillageStore } from '@/lib/stores';
 import { Button } from '@/components/ui/button';
 import { ResourceBar } from './ResourceBar';
-import { LogOut, Swords, User, Trophy } from 'lucide-react';
+import { LogOut, Swords, User, Trophy, Shield } from 'lucide-react';
 
 export function Navbar() {
   const router = useRouter();
@@ -37,10 +37,22 @@ export function Navbar() {
           <ResourceBar />
 
           {user && (
-            <div className="flex items-center gap-2 rounded-md border bg-card px-3 py-2">
-              <User className="h-4 w-4" />
-              <span className="text-sm font-medium">{user.username}</span>
-            </div>
+            <>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => router.push('/war-room')}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              >
+                <Shield className="mr-2 h-4 w-4" />
+                War Room
+              </Button>
+
+              <div className="flex items-center gap-2 rounded-md border bg-card px-3 py-2">
+                <User className="h-4 w-4" />
+                <span className="text-sm font-medium">{user.username}</span>
+              </div>
+            </>
           )}
 
           <Button variant="outline" size="sm" onClick={handleLogout}>
