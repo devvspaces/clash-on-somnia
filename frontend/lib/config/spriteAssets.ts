@@ -108,27 +108,27 @@ export enum CursorState {
 
 export const CURSOR_SPRITES: Record<CursorState, CursorConfig> = {
   [CursorState.DEFAULT]: {
-    path: '/assets/kenney_cursor-pixel-pack/tile_0000.png',
+    path: '/assets/kenney_cursor-pixel-pack/Tiles/tile_0000.png',
     hotspot: { x: 0, y: 0 },
   },
   [CursorState.HOVER]: {
-    path: '/assets/kenney_cursor-pixel-pack/tile_0046.png',
+    path: '/assets/kenney_cursor-pixel-pack/Tiles/tile_0046.png',
     hotspot: { x: 8, y: 8 },
   },
   [CursorState.GRAB]: {
-    path: '/assets/kenney_cursor-pixel-pack/tile_0013.png',
+    path: '/assets/kenney_cursor-pixel-pack/Tiles/tile_0013.png',
     hotspot: { x: 8, y: 8 },
   },
   [CursorState.GRABBING]: {
-    path: '/assets/kenney_cursor-pixel-pack/tile_0014.png',
+    path: '/assets/kenney_cursor-pixel-pack/Tiles/tile_0014.png',
     hotspot: { x: 8, y: 8 },
   },
   [CursorState.TARGET]: {
-    path: '/assets/kenney_cursor-pixel-pack/tile_0047.png',
+    path: '/assets/kenney_cursor-pixel-pack/Tiles/tile_0047.png',
     hotspot: { x: 16, y: 16 },
   },
   [CursorState.POINTER]: {
-    path: '/assets/kenney_cursor-pixel-pack/tile_0046.png',
+    path: '/assets/kenney_cursor-pixel-pack/Tiles/tile_0046.png',
     hotspot: { x: 8, y: 8 },
   },
 };
@@ -196,8 +196,8 @@ export const CRITICAL_ASSETS: string[] = [
   // All building sprites
   ...Object.values(BUILDING_SPRITES).map((sprite) => sprite.path),
 
-  // All cursor sprites
-  ...Object.values(CURSOR_SPRITES).map((cursor) => cursor.path),
+  // Cursor sprites will be loaded when CursorManager is implemented
+  // ...Object.values(CURSOR_SPRITES).map((cursor) => cursor.path),
 ];
 
 /**
