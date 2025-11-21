@@ -33,7 +33,18 @@ export class VillagesService {
       lastCollectedAt: oneHourAgo,
     });
 
-    // Create initial buildings
+    // Create initial buildings with internal storage fields
+    const townHallConfig = getBuildingConfig(BuildingType.TOWN_HALL);
+    const goldMineConfig = getBuildingConfig(BuildingType.GOLD_MINE);
+    const elixirCollectorConfig = getBuildingConfig(BuildingType.ELIXIR_COLLECTOR);
+    const goldStorageConfig = getBuildingConfig(BuildingType.GOLD_STORAGE);
+    const elixirStorageConfig = getBuildingConfig(BuildingType.ELIXIR_STORAGE);
+    const armyCampConfig = getBuildingConfig(BuildingType.ARMY_CAMP);
+
+    // Starter buildings should be immediately functional
+    const now = new Date();
+    const immediately = new Date(now.getTime() - 1000); // 1 second in the past to ensure complete
+
     const initialBuildings = [
       // Town Hall at center
       {
@@ -42,51 +53,100 @@ export class VillagesService {
         level: 1,
         positionX: 18,
         positionY: 18,
-        health: getBuildingConfig(BuildingType.TOWN_HALL).maxHealth,
-        maxHealth: getBuildingConfig(BuildingType.TOWN_HALL).maxHealth,
+        health: townHallConfig.maxHealth,
+        maxHealth: townHallConfig.maxHealth,
         isActive: true,
+        internalGold: 0,
+        internalElixir: 0,
+        internalGoldCapacity: 0,
+        internalElixirCapacity: 0,
+        lastCollectedAt: now,
+        constructionCompletedAt: immediately,
       },
-      // 2 Gold Mines
+      // 1 Gold Mine
       {
         villageId: village.id,
         type: BuildingType.GOLD_MINE,
         level: 1,
         positionX: 10,
         positionY: 15,
-        health: getBuildingConfig(BuildingType.GOLD_MINE).maxHealth,
-        maxHealth: getBuildingConfig(BuildingType.GOLD_MINE).maxHealth,
+        health: goldMineConfig.maxHealth,
+        maxHealth: goldMineConfig.maxHealth,
         isActive: true,
+        internalGold: 0,
+        internalElixir: 0,
+        internalGoldCapacity: goldMineConfig.capacity || 0,
+        internalElixirCapacity: 0,
+        lastCollectedAt: oneHourAgo,
+        constructionCompletedAt: immediately,
       },
-      {
-        villageId: village.id,
-        type: BuildingType.GOLD_MINE,
-        level: 1,
-        positionX: 10,
-        positionY: 22,
-        health: getBuildingConfig(BuildingType.GOLD_MINE).maxHealth,
-        maxHealth: getBuildingConfig(BuildingType.GOLD_MINE).maxHealth,
-        isActive: true,
-      },
-      // 2 Elixir Collectors
+      // 1 Elixir Collector
       {
         villageId: village.id,
         type: BuildingType.ELIXIR_COLLECTOR,
         level: 1,
         positionX: 28,
         positionY: 15,
-        health: getBuildingConfig(BuildingType.ELIXIR_COLLECTOR).maxHealth,
-        maxHealth: getBuildingConfig(BuildingType.ELIXIR_COLLECTOR).maxHealth,
+        health: elixirCollectorConfig.maxHealth,
+        maxHealth: elixirCollectorConfig.maxHealth,
         isActive: true,
+        internalGold: 0,
+        internalElixir: 0,
+        internalGoldCapacity: 0,
+        internalElixirCapacity: elixirCollectorConfig.capacity || 0,
+        lastCollectedAt: oneHourAgo,
+        constructionCompletedAt: immediately,
       },
+      // Gold Storage
       {
         villageId: village.id,
-        type: BuildingType.ELIXIR_COLLECTOR,
+        type: BuildingType.GOLD_STORAGE,
         level: 1,
-        positionX: 28,
-        positionY: 22,
-        health: getBuildingConfig(BuildingType.ELIXIR_COLLECTOR).maxHealth,
-        maxHealth: getBuildingConfig(BuildingType.ELIXIR_COLLECTOR).maxHealth,
+        positionX: 8,
+        positionY: 25,
+        health: goldStorageConfig.maxHealth,
+        maxHealth: goldStorageConfig.maxHealth,
         isActive: true,
+        internalGold: 0,
+        internalElixir: 0,
+        internalGoldCapacity: 0,
+        internalElixirCapacity: 0,
+        lastCollectedAt: now,
+        constructionCompletedAt: immediately,
+      },
+      // Elixir Storage
+      {
+        villageId: village.id,
+        type: BuildingType.ELIXIR_STORAGE,
+        level: 1,
+        positionX: 30,
+        positionY: 25,
+        health: elixirStorageConfig.maxHealth,
+        maxHealth: elixirStorageConfig.maxHealth,
+        isActive: true,
+        internalGold: 0,
+        internalElixir: 0,
+        internalGoldCapacity: 0,
+        internalElixirCapacity: 0,
+        lastCollectedAt: now,
+        constructionCompletedAt: immediately,
+      },
+      // Army Camp
+      {
+        villageId: village.id,
+        type: BuildingType.ARMY_CAMP,
+        level: 1,
+        positionX: 18,
+        positionY: 8,
+        health: armyCampConfig.maxHealth,
+        maxHealth: armyCampConfig.maxHealth,
+        isActive: true,
+        internalGold: 0,
+        internalElixir: 0,
+        internalGoldCapacity: 0,
+        internalElixirCapacity: 0,
+        lastCollectedAt: now,
+        constructionCompletedAt: immediately,
       },
     ];
 
@@ -120,6 +180,9 @@ export class VillagesService {
       throw new NotFoundException('Village not found');
     }
 
+    // Update all collectors' internal storage before returning
+    await this.updateAllCollectors(village.id);
+
     // Get resources
     const [villageResources] = await this.db
       .select()
@@ -138,5 +201,71 @@ export class VillagesService {
       resources: villageResources,
       buildings: villageBuildings,
     };
+  }
+
+  private async updateAllCollectors(villageId: string): Promise<void> {
+    // Get all collector buildings
+    const collectors = await this.db
+      .select()
+      .from(buildings)
+      .where(eq(buildings.villageId, villageId));
+
+    const now = new Date();
+
+    for (const building of collectors) {
+      // Only process gold mines and elixir collectors
+      if (building.type !== BuildingType.GOLD_MINE && building.type !== BuildingType.ELIXIR_COLLECTOR) {
+        continue;
+      }
+
+      // Skip buildings that are still under construction
+      const constructionCompletedAt = new Date(building.constructionCompletedAt);
+      if (now < constructionCompletedAt) {
+        continue;
+      }
+
+      const config = getBuildingConfig(building.type as BuildingType);
+      if (!config.generationRate) continue;
+
+      // Calculate time elapsed since last collection (in hours)
+      const lastCollected = new Date(building.lastCollectedAt);
+      const hoursElapsed = (now.getTime() - lastCollected.getTime()) / (1000 * 60 * 60);
+
+      // Calculate generated resources
+      const generated = Math.floor(config.generationRate * hoursElapsed);
+
+      if (generated <= 0) continue;
+
+      // Update internal storage, capped by capacity
+      if (building.type === BuildingType.GOLD_MINE) {
+        const newInternalGold = Math.min(
+          building.internalGold + generated,
+          building.internalGoldCapacity
+        );
+
+        await this.db
+          .update(buildings)
+          .set({
+            internalGold: newInternalGold,
+            lastCollectedAt: now,
+            updatedAt: now,
+          })
+          .where(eq(buildings.id, building.id));
+      } else if (building.type === BuildingType.ELIXIR_COLLECTOR) {
+        const newInternalElixir = Math.min(
+          building.internalElixir + generated,
+          building.internalElixirCapacity
+        );
+
+        await this.db
+          .update(buildings)
+          .set({
+            internalElixir: newInternalElixir,
+            lastCollectedAt: now,
+            updatedAt: now,
+          })
+          .where(eq(buildings.id, building.id));
+      }
+    }
   }
 }

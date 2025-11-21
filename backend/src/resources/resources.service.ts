@@ -1,6 +1,5 @@
 import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { eq } from 'drizzle-orm';
+import { eq, and, or } from 'drizzle-orm';
 import { DATABASE_CONNECTION } from '../database/database.module';
 import { resources, buildings, villages, Resource } from '../database/schema';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
@@ -86,6 +85,120 @@ export class ResourcesService {
     return updatedResources;
   }
 
+  // Smart collection from a specific building
+  async collectFromBuilding(
+    userId: string,
+    buildingId: string,
+  ): Promise<{ building: any; resources: Resource; collected: { gold: number; elixir: number } }> {
+    // Get user's village
+    const [village] = await this.db
+      .select()
+      .from(villages)
+      .where(eq(villages.userId, userId))
+      .limit(1);
+
+    if (!village) {
+      throw new NotFoundException('Village not found');
+    }
+
+    // Get the building and verify it belongs to this village
+    const [building] = await this.db
+      .select()
+      .from(buildings)
+      .where(and(eq(buildings.id, buildingId), eq(buildings.villageId, village.id)))
+      .limit(1);
+
+    if (!building) {
+      throw new NotFoundException('Building not found');
+    }
+
+    // Only collectors can be collected from
+    if (building.type !== BuildingType.GOLD_MINE && building.type !== BuildingType.ELIXIR_COLLECTOR) {
+      throw new BadRequestException('This building type cannot be collected from');
+    }
+
+    // Update building's internal storage first (calculate what's generated since last collection)
+    await this.updateBuildingInternalStorage(buildingId);
+
+    // Re-fetch the building to get updated internal storage
+    const [updatedBuilding] = await this.db
+      .select()
+      .from(buildings)
+      .where(eq(buildings.id, buildingId))
+      .limit(1);
+
+    if (!updatedBuilding) {
+      throw new NotFoundException('Building not found');
+    }
+
+    // Get current village resources
+    const currentResources = await this.getResourcesByVillageId(village.id);
+    if (!currentResources) {
+      throw new NotFoundException('Resources not found');
+    }
+
+    // Get storage capacities
+    const { maxGold, maxElixir } = await this.getStorageCapacities(village.id);
+
+    // Calculate available space in main storage
+    const availableGoldSpace = maxGold - currentResources.gold;
+    const availableElixirSpace = maxElixir - currentResources.elixir;
+
+    let collectedGold = 0;
+    let collectedElixir = 0;
+    let newInternalGold = updatedBuilding.internalGold;
+    let newInternalElixir = updatedBuilding.internalElixir;
+
+    // Smart collection for gold mines
+    if (building.type === BuildingType.GOLD_MINE) {
+      collectedGold = Math.min(updatedBuilding.internalGold, availableGoldSpace);
+      newInternalGold = updatedBuilding.internalGold - collectedGold;
+    }
+
+    // Smart collection for elixir collectors
+    if (building.type === BuildingType.ELIXIR_COLLECTOR) {
+      collectedElixir = Math.min(updatedBuilding.internalElixir, availableElixirSpace);
+      newInternalElixir = updatedBuilding.internalElixir - collectedElixir;
+    }
+
+    // Update building internal storage
+    await this.db
+      .update(buildings)
+      .set({
+        internalGold: newInternalGold,
+        internalElixir: newInternalElixir,
+        updatedAt: new Date(),
+      })
+      .where(eq(buildings.id, buildingId));
+
+    // Update village resources
+    const [updatedResources] = await this.db
+      .update(resources)
+      .set({
+        gold: currentResources.gold + collectedGold,
+        elixir: currentResources.elixir + collectedElixir,
+        updatedAt: new Date(),
+      })
+      .where(eq(resources.villageId, village.id))
+      .returning();
+
+    // Fetch final building state
+    const [finalBuilding] = await this.db
+      .select()
+      .from(buildings)
+      .where(eq(buildings.id, buildingId))
+      .limit(1);
+
+    return {
+      building: finalBuilding,
+      resources: updatedResources,
+      collected: {
+        gold: collectedGold,
+        elixir: collectedElixir,
+      },
+    };
+  }
+
   async calculateGeneratedResources(
     villageId: string,
   ): Promise<{ generatedGold: number; generatedElixir: number }> {
@@ -143,9 +256,9 @@ export class ResourcesService {
       .from(buildings)
       .where(eq(buildings.villageId, villageId));
 
-    // Base storage from Town Hall
-    let maxGold = 1000;
-    let maxElixir = 1000;
+    // Only count storage from actual storage buildings
+    let maxGold = 0;
+    let maxElixir = 0;
 
     // Add storage from Gold Storage buildings
     const goldStorages = villageBuildings.filter((b) => b.type === BuildingType.GOLD_STORAGE);
@@ -192,48 +305,70 @@ export class ResourcesService {
     return updatedResources;
   }
 
-  // Background job to auto-collect resources every hour
-  @Cron(CronExpression.EVERY_HOUR)
-  async autoCollectResources() {
-    console.log('Running auto-collect resources job...');
+  // Update internal storage for all collector buildings
+  async updateBuildingInternalStorage(buildingId: string): Promise<void> {
+    const [building] = await this.db
+      .select()
+      .from(buildings)
+      .where(eq(buildings.id, buildingId))
+      .limit(1);
 
-    // Get all villages
-    const allVillages = await this.db.select().from(villages);
+    if (!building) return;
 
-    for (const village of allVillages) {
-      try {
-        const currentResources = await this.getResourcesByVillageId(village.id);
-        if (!currentResources) continue;
-
-        // Calculate generated resources
-        const { generatedGold, generatedElixir } =
-          await this.calculateGeneratedResources(village.id);
-
-        // Only update if there are generated resources
-        if (generatedGold > 0 || generatedElixir > 0) {
-          const { maxGold, maxElixir } = await this.getStorageCapacities(village.id);
-
-          const newGold = Math.min(currentResources.gold + generatedGold, maxGold);
-          const newElixir = Math.min(currentResources.elixir + generatedElixir, maxElixir);
-
-          await this.db
-            .update(resources)
-            .set({
-              gold: newGold,
-              elixir: newElixir,
-              updatedAt: new Date(),
-            })
-            .where(eq(resources.villageId, village.id));
-
-          console.log(
-            `Auto-collected for village ${village.id}: +${generatedGold} gold, +${generatedElixir} elixir`,
-          );
-        }
-      } catch (error) {
-        console.error(`Error auto-collecting for village ${village.id}:`, error);
-      }
+    // Only process gold mines and elixir collectors
+    if (building.type !== BuildingType.GOLD_MINE && building.type !== BuildingType.ELIXIR_COLLECTOR) {
+      return;
     }
 
-    console.log('Auto-collect resources job completed');
+    // Skip buildings that are still under construction
+    const now = new Date();
+    const constructionCompletedAt = new Date(building.constructionCompletedAt);
+    if (now < constructionCompletedAt) {
+      return;
+    }
+
+    const config = getBuildingConfig(building.type as BuildingType);
+    if (!config.generationRate) return;
+
+    // Calculate time elapsed since last collection (in hours)
+    const lastCollected = new Date(building.lastCollectedAt);
+    const hoursElapsed = (now.getTime() - lastCollected.getTime()) / (1000 * 60 * 60);
+
+    // Calculate generated resources
+    const generated = Math.floor(config.generationRate * hoursElapsed);
+
+    if (generated <= 0) return;
+
+    // Update internal storage, capped by capacity
+    if (building.type === BuildingType.GOLD_MINE) {
+      const newInternalGold = Math.min(
+        building.internalGold + generated,
+        building.internalGoldCapacity
+      );
+
+      await this.db
+        .update(buildings)
+        .set({
+          internalGold: newInternalGold,
+          lastCollectedAt: now,
+          updatedAt: now,
+        })
+        .where(eq(buildings.id, buildingId));
+    } else if (building.type === BuildingType.ELIXIR_COLLECTOR) {
+      const newInternalElixir = Math.min(
+        building.internalElixir + generated,
+        building.internalElixirCapacity
+      );
+
+      await this.db
+        .update(buildings)
+        .set({
+          internalElixir: newInternalElixir,
+          lastCollectedAt: now,
+          updatedAt: now,
+        })
+        .where(eq(buildings.id, buildingId));
+    }
   }
+
 }

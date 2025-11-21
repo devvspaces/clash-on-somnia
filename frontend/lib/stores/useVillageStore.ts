@@ -6,6 +6,7 @@ interface VillageState {
   isLoading: boolean;
   error: string | null;
   fetchVillage: () => Promise<void>;
+  silentRefresh: () => Promise<void>;
   updateResources: (gold: number, elixir: number) => void;
   addBuilding: (building: Building) => void;
   removeBuilding: (buildingId: string) => void;
@@ -29,6 +30,25 @@ export const useVillageStore = create<VillageState>((set, get) => ({
         error: error.response?.data?.message || 'Failed to fetch village',
         isLoading: false,
       });
+    }
+  },
+
+  silentRefresh: async () => {
+    try {
+      // Fetch without triggering loading state to prevent re-renders
+      const village = await villagesApi.getMyVillage();
+      const currentVillage = get().village;
+
+      // Only update if there are actual changes to buildings (collector internal storage)
+      if (currentVillage) {
+        const buildingsChanged = JSON.stringify(village.buildings) !== JSON.stringify(currentVillage.buildings);
+        if (buildingsChanged) {
+          set({ village });
+        }
+      }
+    } catch (error: any) {
+      // Silent fail - don't update error state during background refresh
+      console.error('Silent refresh failed:', error);
     }
   },
 

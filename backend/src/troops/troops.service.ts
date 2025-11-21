@@ -7,13 +7,43 @@ import {  army, trainingQueue } from '../database/schema';
 import { getTroopConfig, calculateHousingSpace, TroopType } from '../common/config/troops.config';
 import { TrainTroopDto } from './dto/train-troop.dto';
 import { DATABASE_CONNECTION } from '../database/database.module';
-
-// Army camp capacity (can be upgraded later)
-const ARMY_CAPACITY = 100;
+import { BuildingType, getBuildingConfig } from '../common/config/buildings.config';
 
 @Injectable()
 export class TroopsService {
   constructor(@Inject(DATABASE_CONNECTION) private db: NodePgDatabase<typeof schema>) {}
+
+  /**
+   * Calculate total army capacity from all army camps
+   */
+  private async getArmyCapacity(villageId: string): Promise<number> {
+    // Get all army camps for this village
+    const armyCamps = await this.db
+      .select()
+      .from(schema.buildings)
+      .where(
+        and(
+          eq(schema.buildings.villageId, villageId),
+          eq(schema.buildings.type, BuildingType.ARMY_CAMP)
+        )
+      );
+
+    // Calculate total capacity from all army camps
+    // Only count camps that are fully constructed
+    const now = new Date();
+    let totalCapacity = 0;
+
+    for (const camp of armyCamps) {
+      const constructionCompletedAt = new Date(camp.constructionCompletedAt);
+      // Only count if construction is complete
+      if (now >= constructionCompletedAt) {
+        const config = getBuildingConfig(BuildingType.ARMY_CAMP);
+        totalCapacity += config.capacity || 0;
+      }
+    }
+
+    return totalCapacity;
+  }
 
   /**
    * Train a new troop - adds to training queue
@@ -44,6 +74,14 @@ export class TroopsService {
       throw new BadRequestException('Not enough elixir');
     }
 
+    // Get total army capacity from all army camps
+    const armyCapacity = await this.getArmyCapacity(village.id);
+
+    // If no army camps or all under construction, can't train troops
+    if (armyCapacity === 0) {
+      throw new BadRequestException('No functional army camps available. Build or complete construction of an army camp first.');
+    }
+
     // Check army capacity
     const currentArmy = await this.getArmy(village.id);
     const currentHousingSpace = calculateHousingSpace(
@@ -60,8 +98,8 @@ export class TroopsService {
       queue.map(q => ({ type: q.troopType as TroopType, count: 1 }))
     );
 
-    if (currentHousingSpace + queueHousingSpace + troopConfig.housingSpace > ARMY_CAPACITY) {
-      throw new BadRequestException('Army capacity full');
+    if (currentHousingSpace + queueHousingSpace + troopConfig.housingSpace > armyCapacity) {
+      throw new BadRequestException(`Army capacity full (${currentHousingSpace + queueHousingSpace}/${armyCapacity})`);
     }
 
     // Deduct elixir

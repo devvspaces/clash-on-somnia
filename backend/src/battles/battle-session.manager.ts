@@ -1,5 +1,6 @@
 import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { BattlesGateway, BattleEvent } from './battles.gateway';
+import { SpectateGateway } from './spectate.gateway';
 
 export interface Troop {
   id: string;
@@ -56,10 +57,15 @@ export interface BattleSession {
 export class BattleSessionManager {
   private sessions: Map<string, BattleSession> = new Map();
   private gateway: BattlesGateway;
+  private spectateGateway: SpectateGateway;
   private battlesService: any; // Will be set later to avoid circular dependency
 
   setGateway(gateway: BattlesGateway) {
     this.gateway = gateway;
+  }
+
+  setSpectateGateway(gateway: SpectateGateway) {
+    this.spectateGateway = gateway;
   }
 
   setBattlesService(service: any) {
@@ -453,27 +459,34 @@ export class BattleSessionManager {
     if (session.destructionPercentage >= 70) stars = 2;
     if (session.destructionPercentage >= 100) stars = 3;
 
+    let lootGold = 0;
+    let lootElixir = 0;
+
+    // Update battle results in database and get loot amounts
+    if (this.battlesService) {
+      try {
+        const loot = await this.battlesService.updateBattleResults(
+          battleId,
+          session.destructionPercentage,
+          stars,
+        );
+        lootGold = loot?.lootGold ?? 0;
+        lootElixir = loot?.lootElixir ?? 0;
+      } catch (error) {
+        console.error('Failed to update battle results:', error);
+      }
+    }
+
     const result = {
       battleId,
       destructionPercentage: session.destructionPercentage,
       stars,
       duration: Date.now() - session.startTime,
+      lootGold,
+      lootElixir,
     };
 
     console.log(`Battle ${battleId} ended:`, result);
-
-    // Update battle results in database
-    if (this.battlesService) {
-      try {
-        await this.battlesService.updateBattleResults(
-          battleId,
-          session.destructionPercentage,
-          stars,
-        );
-      } catch (error) {
-        console.error('Failed to update battle results:', error);
-      }
-    }
 
     this.broadcastEvent(session, 'BATTLE_END', result);
 
@@ -484,8 +497,6 @@ export class BattleSessionManager {
   }
 
   private broadcastEvent(sessionOrTroop: BattleSession | Troop, type: string, data: any) {
-    if (!this.gateway) return;
-
     const battleId = 'id' in sessionOrTroop ? (sessionOrTroop as BattleSession).id : null;
     if (!battleId) return;
 
@@ -495,7 +506,15 @@ export class BattleSessionManager {
       data,
     };
 
-    this.gateway.broadcastBattleEvent(battleId, event);
+    // Broadcast to authenticated battle participants (attackers)
+    if (this.gateway) {
+      this.gateway.broadcastBattleEvent(battleId, event);
+    }
+
+    // Broadcast to public spectators
+    if (this.spectateGateway) {
+      this.spectateGateway.broadcastBattleEvent(battleId, event);
+    }
   }
 
   private getDistance(p1: { x: number; y: number }, p2: { x: number; y: number }): number {

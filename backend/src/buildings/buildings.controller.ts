@@ -1,9 +1,10 @@
-import { Controller, Post, Put, Delete, UseGuards, Req, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, UseGuards, Req, Body, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { BuildingsService } from './buildings.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { VillagesService } from '../villages/villages.service';
 import { PlaceBuildingDto, MoveBuildingDto } from './dto/building.dto';
+import { BUILDING_CONFIGS } from '../common/config/buildings.config';
 
 @ApiTags('buildings')
 @Controller('buildings')
@@ -15,9 +16,16 @@ export class BuildingsController {
     private villagesService: VillagesService,
   ) {}
 
+  @Get('configs')
+  @ApiOperation({ summary: 'Get all building configurations' })
+  @ApiResponse({ status: 200, description: 'Building configurations retrieved' })
+  getBuildingConfigs() {
+    return BUILDING_CONFIGS;
+  }
+
   @Post('add-starter-buildings')
   @ApiOperation({
-    summary: 'Add starter buildings to current village (migration helper for Phase 1 users)',
+    summary: 'Add starter buildings to current village (migration helper)',
   })
   @ApiResponse({ status: 200, description: 'Starter buildings added' })
   async addStarterBuildings(@Req() req) {
@@ -31,6 +39,19 @@ export class BuildingsController {
     return {
       message: `Added ${buildingsAdded} starter buildings to your village`,
       buildingsAdded,
+    };
+  }
+
+  @Post('fix-collector-capacities')
+  @ApiOperation({
+    summary: 'Fix collector internal storage capacities (migration helper)',
+  })
+  @ApiResponse({ status: 200, description: 'Collector capacities updated' })
+  async fixCollectorCapacities() {
+    const result = await this.buildingsService.fixCollectorCapacities();
+    return {
+      message: 'All collector buildings updated with correct capacities',
+      result,
     };
   }
 

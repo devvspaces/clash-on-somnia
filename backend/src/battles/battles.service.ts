@@ -476,6 +476,55 @@ export class BattlesService {
   }
 
   /**
+   * Get all recent battles (public, no auth required)
+   * Used for landing page spectator view
+   */
+  async getAllRecentBattles(limit: number = 50) {
+    const battlesData = await this.db
+      .select({
+        id: battles.id,
+        attackerId: battles.attackerId,
+        defenderId: battles.defenderId,
+        attackerTroops: battles.attackerTroops,
+        destructionPercentage: battles.destructionPercentage,
+        stars: battles.stars,
+        lootGold: battles.lootGold,
+        lootElixir: battles.lootElixir,
+        status: battles.status,
+        createdAt: battles.createdAt,
+        attackerVillage: {
+          id: villages.id,
+          name: villages.name,
+        },
+      })
+      .from(battles)
+      .leftJoin(villages, eq(battles.attackerId, villages.id))
+      .orderBy(desc(battles.createdAt))
+      .limit(limit);
+
+    // Fetch defender village names separately
+    const result = await Promise.all(
+      battlesData.map(async (battle) => {
+        const [defenderVillage] = await this.db
+          .select({
+            id: villages.id,
+            name: villages.name,
+          })
+          .from(villages)
+          .where(eq(villages.id, battle.defenderId))
+          .limit(1);
+
+        return {
+          ...battle,
+          defenderVillage: defenderVillage || { id: battle.defenderId, name: 'Unknown' },
+        };
+      })
+    );
+
+    return result;
+  }
+
+  /**
    * Get a single battle by ID
    */
   async getBattleById(battleId: string): Promise<Battle | null> {
@@ -489,7 +538,7 @@ export class BattlesService {
   }
 
   /**
-   * Start a real-time battle session (Phase 6)
+   * Start a real-time battle session
    * Creates a battle session for interactive troop deployment
    */
   async startBattle(
@@ -499,6 +548,10 @@ export class BattlesService {
     maxTroops: { type: TroopType; count: number }[],
   ) {
     console.log('Starting real-time battle:', { attackerId, attackerVillageId, defenderVillageId });
+
+    // Validate and deduct troops from attacker's army
+    await this.consumeTroops(attackerVillageId, maxTroops);
+    console.log('Troops consumed from army:', maxTroops);
 
     // Get defender's village to find defender user
     const defenderVillage = await this.db
@@ -615,14 +668,14 @@ export class BattlesService {
     battleId: string,
     destructionPercentage: number,
     stars: number,
-  ): Promise<void> {
+  ): Promise<{ lootGold: number; lootElixir: number } | null> {
     console.log(`Updating battle ${battleId} results: ${destructionPercentage}% destruction, ${stars} stars`);
 
     // Calculate loot based on destruction percentage
     const battleRecord = await this.getBattleById(battleId);
     if (!battleRecord) {
       console.error(`Battle ${battleId} not found for update`);
-      return;
+      return null;
     }
 
     const { lootGold, lootElixir } = await this.calculateLoot(
@@ -653,6 +706,51 @@ export class BattlesService {
         .where(eq(resources.villageId, battleRecord.attackerId));
 
       console.log(`Awarded ${lootGold} gold and ${lootElixir} elixir to attacker`);
+    }
+
+    return { lootGold, lootElixir };
+  }
+
+  /**
+   * Consume troops from army when starting a battle
+   */
+  private async consumeTroops(
+    villageId: string,
+    troops: { type: TroopType; count: number }[],
+  ): Promise<void> {
+    for (const troopGroup of troops) {
+      // Get current troop count
+      const [armyRecord] = await this.db
+        .select()
+        .from(army)
+        .where(
+          and(
+            eq(army.villageId, villageId),
+            eq(army.troopType, troopGroup.type),
+          ),
+        )
+        .limit(1);
+
+      if (!armyRecord) {
+        throw new Error(`Troop type ${troopGroup.type} not found in army`);
+      }
+
+      if (armyRecord.count < troopGroup.count) {
+        throw new Error(
+          `Insufficient troops: have ${armyRecord.count} ${troopGroup.type}, need ${troopGroup.count}`,
+        );
+      }
+
+      // Deduct troops
+      await this.db
+        .update(army)
+        .set({
+          count: sql`${army.count} - ${troopGroup.count}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(army.id, armyRecord.id));
+
+      console.log(`Deducted ${troopGroup.count} ${troopGroup.type} from village ${villageId}`);
     }
   }
 }
