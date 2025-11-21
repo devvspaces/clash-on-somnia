@@ -279,6 +279,11 @@ export class BattlesGateway implements OnGatewayConnection, OnGatewayDisconnect,
     attackerVillageName: string;
     defenderVillageId: string;
   }) {
+    if (!this.server) {
+      console.warn(`Cannot notify defender - server not initialized`);
+      return;
+    }
+
     const connections = this.userConnections.get(defenderId);
 
     if (!connections || connections.size === 0) {
@@ -306,6 +311,10 @@ export class BattlesGateway implements OnGatewayConnection, OnGatewayDisconnect,
    * Broadcast a battle event to all clients in a battle room
    */
   broadcastBattleEvent(battleId: string, event: BattleEvent) {
+    if (!this.server) {
+      console.warn(`Cannot broadcast ${event.type} - server not initialized`);
+      return;
+    }
     const roomSize = this.battleRooms.get(battleId)?.size || 0;
     console.log(`Broadcasting ${event.type} to battle ${battleId} (${roomSize} clients in room)`);
     this.server.to(battleId).emit('battleEvent', event);
@@ -315,6 +324,10 @@ export class BattlesGateway implements OnGatewayConnection, OnGatewayDisconnect,
    * Broadcast battle end event
    */
   broadcastBattleEnd(battleId: string, result: any) {
+    if (!this.server) {
+      console.warn(`Cannot broadcast battle end - server not initialized`);
+      return;
+    }
     this.server.to(battleId).emit('battleEnd', result);
   }
 
