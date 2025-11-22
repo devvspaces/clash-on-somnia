@@ -252,6 +252,10 @@ export default function VillagePage() {
                 await loadResources();
                 await fetchVillage();
               }}
+              currentGold={resources?.gold || 0}
+              maxGold={resources?.capacity.gold || 10000}
+              currentElixir={resources?.elixir || 0}
+              maxElixir={resources?.capacity.elixir || 10000}
             />
           )}
         </>

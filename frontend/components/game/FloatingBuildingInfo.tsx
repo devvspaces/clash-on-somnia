@@ -17,6 +17,10 @@ interface FloatingBuildingInfoProps {
   getRemainingConstructionTime: (building: Building) => number;
   formatTime: (seconds: number) => string;
   onCollect: () => Promise<void>;
+  currentGold?: number;
+  maxGold?: number;
+  currentElixir?: number;
+  maxElixir?: number;
 }
 
 export function FloatingBuildingInfo({
@@ -26,10 +30,14 @@ export function FloatingBuildingInfo({
   getRemainingConstructionTime,
   formatTime,
   onCollect,
+  currentGold = 0,
+  maxGold = 10000,
+  currentElixir = 0,
+  maxElixir = 10000,
 }: FloatingBuildingInfoProps) {
   const [isCollecting, setIsCollecting] = useState(false);
   const visualConfig = getBuildingVisual(building.type);
-  const { success } = useToastStore();
+  const { success, warning } = useToastStore();
   const { showGold, showElixir } = useFloatingNumberStore();
 
   const isUnderConstruction = isBuildingUnderConstruction(building);
@@ -42,8 +50,26 @@ export function FloatingBuildingInfo({
       const goldAmount = building.type === 'gold_mine' ? (building.internalGold || 0) : 0;
       const elixirAmount = building.type === 'elixir_collector' ? (building.internalElixir || 0) : 0;
 
+      // Check storage capacity
+      if (building.type === 'gold_mine' && currentGold + goldAmount > maxGold) {
+        const canCollect = maxGold - currentGold;
+        if (canCollect <= 0) {
+          warning('Storage Full!', 'Your gold storage is full. Upgrade storage to collect more.');
+          setIsCollecting(false);
+          return;
+        }
+      }
+
+      if (building.type === 'elixir_collector' && currentElixir + elixirAmount > maxElixir) {
+        const canCollect = maxElixir - currentElixir;
+        if (canCollect <= 0) {
+          warning('Storage Full!', 'Your elixir storage is full. Upgrade storage to collect more.');
+          setIsCollecting(false);
+          return;
+        }
+      }
+
       await resourcesApi.collectFromBuilding(building.id);
-      await onCollect();
 
       // Show floating numbers
       const rect = document.querySelector('.fixed.bottom-6.left-6')?.getBoundingClientRect();
@@ -52,6 +78,8 @@ export function FloatingBuildingInfo({
         if (elixirAmount > 0) showElixir(rect.left + rect.width / 2, rect.top, elixirAmount);
       }
 
+      // Refresh data and show success
+      await onCollect();
       success('Resources Collected!', `Collected from ${visualConfig.name}`);
     } catch (error: any) {
       console.error('Failed to collect:', error);
@@ -72,6 +100,14 @@ export function FloatingBuildingInfo({
     ? (building.internalGoldCapacity || 1000)
     : (building.internalElixirCapacity || 1000);
   const storedPercent = (storedAmount / capacity) * 100;
+
+  // Check if storage is full
+  const isStorageFull = building.type === 'gold_mine'
+    ? currentGold >= maxGold
+    : currentElixir >= maxElixir;
+  const hasSpaceForCollection = building.type === 'gold_mine'
+    ? (currentGold + storedAmount) <= maxGold
+    : (currentElixir + storedAmount) <= maxElixir;
 
   return (
     <AnimatePresence>
@@ -230,23 +266,40 @@ export function FloatingBuildingInfo({
                   </span>
                 </div>
                 {storedAmount > 0 && (
-                  <Button
-                    onClick={handleCollect}
-                    disabled={isCollecting}
-                    className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transition-all duration-300 hover:scale-105"
-                  >
-                    {isCollecting ? (
-                      <>
-                        <Sparkles className="w-4 h-4 mr-2 animate-spin" />
-                        Collecting...
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="w-4 h-4 mr-2" />
-                        Collect Resources
-                      </>
+                  <>
+                    {isStorageFull && (
+                      <div className="bg-orange-500/20 rounded-lg p-3 mb-3 border border-orange-500/30">
+                        <p className="text-sm text-orange-400 text-center">
+                          ⚠️ Storage is full! Upgrade storage to collect more.
+                        </p>
+                      </div>
                     )}
-                  </Button>
+                    <Button
+                      onClick={handleCollect}
+                      disabled={isCollecting || isStorageFull}
+                      className={`w-full transition-all duration-300 ${
+                        isStorageFull
+                          ? 'bg-gray-700 cursor-not-allowed'
+                          : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 hover:scale-105'
+                      }`}
+                    >
+                      {isCollecting ? (
+                        <>
+                          <Sparkles className="w-4 h-4 mr-2 animate-spin" />
+                          Collecting...
+                        </>
+                      ) : isStorageFull ? (
+                        <>
+                          🏦 Storage Full
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="w-4 h-4 mr-2" />
+                          Collect Resources
+                        </>
+                      )}
+                    </Button>
+                  </>
                 )}
               </motion.div>
             )}
