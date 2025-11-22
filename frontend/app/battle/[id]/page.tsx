@@ -59,7 +59,7 @@ export default function BattlePage() {
   const router = useRouter();
   const params = useParams();
   const { isAuthenticated, user } = useAuthStore();
-  const { village } = useVillageStore();
+  const { village, fetchVillage } = useVillageStore();
   const { battleSession: storedBattleSession, selectedTroops, clearBattle } = useBattleStore();
   const sessionId = params.id as string;
   const villageId = village?.id;
@@ -101,6 +101,14 @@ export default function BattlePage() {
     };
     preloadSprites();
   }, []);
+
+  // Ensure village is loaded (needed for villageId to connect WebSocket)
+  useEffect(() => {
+    if (!village && isAuthenticated) {
+      console.log('Village not loaded, fetching...');
+      fetchVillage();
+    }
+  }, [village, isAuthenticated, fetchVillage]);
 
   // Get troops from store or battle session (for rejoin)
   const troops = selectedTroops || battleSession?.troops || [];
@@ -507,7 +515,16 @@ export default function BattlePage() {
 
   // Connect to WebSocket and join battle
   useEffect(() => {
-    if (!battleSession || !villageId) return;
+    console.log('WebSocket useEffect check:', {
+      hasBattleSession: !!battleSession,
+      hasVillageId: !!villageId,
+      villageId
+    });
+
+    if (!battleSession || !villageId) {
+      console.log('Skipping WebSocket connection - missing battleSession or villageId');
+      return;
+    }
 
     // Get token from localStorage (stored as 'auth_token' by the auth store)
     const token = localStorage.getItem('auth_token');
