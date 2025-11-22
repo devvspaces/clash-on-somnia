@@ -200,10 +200,6 @@ export const CRITICAL_ASSETS: string[] = [
     .map((sprite) => sprite.path)
     .filter((path) => path !== ''),
 
-  // Ground tiles for empty grid cells
-  '/assets/kenney_tiny-town/Tiles/tile_0001.png', // Plain grass (common)
-  '/assets/kenney_tiny-town/Tiles/tile_0002.png', // Grass with flowers (rare)
-
   // Cursor sprites will be loaded when CursorManager is implemented
   // ...Object.values(CURSOR_SPRITES).map((cursor) => cursor.path),
 ];

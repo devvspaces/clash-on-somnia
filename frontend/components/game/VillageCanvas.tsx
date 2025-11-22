@@ -16,22 +16,7 @@ interface VillageCanvasProps {
 const GRID_SIZE = 40; // 40x40 grid
 const TILE_SIZE = 15; // pixels per tile
 const CANVAS_SIZE = GRID_SIZE * TILE_SIZE; // 600px
-
-// Ground tile paths
-const GROUND_TILE_1 = '/assets/kenney_tiny-town/Tiles/tile_0001.png'; // Plain grass (common)
-const GROUND_TILE_2 = '/assets/kenney_tiny-town/Tiles/tile_0002.png'; // Grass with flowers (rare)
-
-/**
- * Deterministic function to get ground tile for a position
- * Returns tile_0001 ~75% of the time, tile_0002 ~25% of the time
- * Same position always returns the same tile
- */
-function getGroundTileForPosition(x: number, y: number): string {
-  // Use simple hash function for deterministic pseudo-random value
-  const hash = ((x * 73856093) ^ (y * 19349663)) >>> 0;
-  // Use modulo 4 to get value 0-3, then tile_0002 only when value is 0 (25% chance)
-  return (hash % 4) === 0 ? GROUND_TILE_2 : GROUND_TILE_1;
-}
+const BACKGROUND_IMAGE = '/assets/bg/map001.svg';
 
 export function VillageCanvas({ buildings, onBuildingClick }: VillageCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -87,13 +72,40 @@ export function VillageCanvas({ buildings, onBuildingClick }: VillageCanvasProps
     appRef.current = app;
     canvasRef.current.appendChild(app.view as HTMLCanvasElement);
 
-    // Draw grid
-    drawGrid(app);
+    // Load and add background image with cover behavior
+    const loadBackground = async () => {
+      try {
+        const texture = await PIXI.Texture.from(BACKGROUND_IMAGE);
+        const bgSprite = new PIXI.Sprite(texture);
 
-    // Draw ground tiles
-    drawGroundTiles(app);
+        // Calculate scale to cover the canvas (like CSS background-size: cover)
+        const scaleX = CANVAS_SIZE / texture.width;
+        const scaleY = CANVAS_SIZE / texture.height;
+        const scale = Math.max(scaleX, scaleY);
 
-    // Draw decorations (after grid, before buildings)
+        bgSprite.scale.set(scale);
+
+        // Center the background
+        bgSprite.x = (CANVAS_SIZE - texture.width * scale) / 2;
+        bgSprite.y = (CANVAS_SIZE - texture.height * scale) / 2;
+
+        // Add as first child (background layer)
+        app.stage.addChildAt(bgSprite, 0);
+        console.log('🗺️ Background map loaded');
+      } catch (error) {
+        console.error('❌ Failed to load background:', error);
+        // Fallback: draw a simple colored background
+        const bgGraphics = new PIXI.Graphics();
+        bgGraphics.beginFill(0x228b22);
+        bgGraphics.drawRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+        bgGraphics.endFill();
+        app.stage.addChildAt(bgGraphics, 0);
+      }
+    };
+
+    loadBackground();
+
+    // Draw decorations (after background, before buildings)
     // DISABLED: Decoration assets not available yet
     // decorations.forEach((decoration) => {
     //   drawDecoration(app, decoration);
@@ -115,54 +127,6 @@ export function VillageCanvas({ buildings, onBuildingClick }: VillageCanvasProps
       <div ref={canvasRef} className="rounded-md shadow-lg" />
     </div>
   );
-}
-
-function drawGrid(app: PIXI.Application) {
-  const graphics = new PIXI.Graphics();
-
-  // Draw grass background
-  graphics.beginFill(0x228b22); // Forest green
-  graphics.drawRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-  graphics.endFill();
-
-  // Draw grid lines
-  graphics.lineStyle(1, 0x006400, 0.2); // Dark green, semi-transparent
-
-  // Vertical lines
-  for (let x = 0; x <= GRID_SIZE; x++) {
-    graphics.moveTo(x * TILE_SIZE, 0);
-    graphics.lineTo(x * TILE_SIZE, CANVAS_SIZE);
-  }
-
-  // Horizontal lines
-  for (let y = 0; y <= GRID_SIZE; y++) {
-    graphics.moveTo(0, y * TILE_SIZE);
-    graphics.lineTo(CANVAS_SIZE, y * TILE_SIZE);
-  }
-
-  app.stage.addChild(graphics);
-}
-
-function drawGroundTiles(app: PIXI.Application) {
-  // Render ground tile for each grid cell
-  for (let y = 0; y < GRID_SIZE; y++) {
-    for (let x = 0; x < GRID_SIZE; x++) {
-      const tilePath = getGroundTileForPosition(x, y);
-      const texture = SpriteManager.getTextureSync(tilePath);
-
-      if (texture) {
-        const sprite = new PIXI.Sprite(texture);
-        sprite.x = x * TILE_SIZE;
-        sprite.y = y * TILE_SIZE;
-
-        // Scale to fit tile size
-        sprite.width = TILE_SIZE;
-        sprite.height = TILE_SIZE;
-
-        app.stage.addChild(sprite);
-      }
-    }
-  }
 }
 
 function drawBuilding(
