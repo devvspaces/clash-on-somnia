@@ -118,8 +118,8 @@ export default function BattlePage() {
         console.log('Loaded battle session from store');
         setBattleSession(storedBattleSession);
         setIsLoading(false);
-        if (troops.length > 0) {
-          setSelectedTroopType(troops[0].type);
+        if (selectedTroops && selectedTroops.length > 0) {
+          setSelectedTroopType(selectedTroops[0].type);
         }
       } else {
         // No session in store or session ID mismatch - try to fetch from API
@@ -132,8 +132,8 @@ export default function BattlePage() {
           // Store in Zustand for future use
           const { setBattleSession: storeSession } = useBattleStore.getState();
           storeSession(session);
-          if (troops.length > 0) {
-            setSelectedTroopType(troops[0].type);
+          if (selectedTroops && selectedTroops.length > 0) {
+            setSelectedTroopType(selectedTroops[0].type);
           }
         } catch (error) {
           console.error('Failed to fetch battle session:', error);
@@ -145,11 +145,22 @@ export default function BattlePage() {
     };
 
     loadBattleSession();
-  }, [sessionId, storedBattleSession, router, troops]);
+    // Only depend on sessionId and storedBattleSession - remove router and troops to prevent infinite loops
+  }, [sessionId, storedBattleSession?.session?.id]);
 
   // Initialize Pixi.js canvas
   useEffect(() => {
-    if (!canvasRef.current || appRef.current || !battleSession || !spritesLoaded) return;
+    if (!canvasRef.current || appRef.current || !battleSession || !spritesLoaded) {
+      console.log('Pixi init skipped:', {
+        hasCanvas: !!canvasRef.current,
+        hasApp: !!appRef.current,
+        hasBattleSession: !!battleSession,
+        spritesLoaded
+      });
+      return;
+    }
+
+    console.log('Initializing Pixi.js application...');
 
     const initPixi = () => {
       // Pixi.js v7 syntax
@@ -160,7 +171,12 @@ export default function BattlePage() {
         antialias: true,
       });
 
-      canvasRef.current?.appendChild(app.view as HTMLCanvasElement);
+      // Clear any existing canvas content
+      if (canvasRef.current) {
+        canvasRef.current.innerHTML = '';
+        canvasRef.current.appendChild(app.view as HTMLCanvasElement);
+      }
+
       appRef.current = app;
 
       // Create layers
@@ -190,17 +206,26 @@ export default function BattlePage() {
       // Add click handler for troop deployment
       app.stage.eventMode = 'static';
       app.stage.hitArea = app.screen;
+
+      console.log('Pixi.js application initialized successfully');
     };
 
     initPixi();
 
     return () => {
+      console.log('Cleaning up Pixi.js application...');
       if (appRef.current) {
-        appRef.current.destroy(true);
+        appRef.current.destroy(true, { children: true, texture: false, baseTexture: false });
         appRef.current = null;
       }
+      stageRef.current = null;
+      buildingsLayerRef.current = null;
+      troopsLayerRef.current = null;
+      effectsLayerRef.current = null;
+      buildingSpritesRef.current.clear();
+      troopSpritesRef.current.clear();
     };
-  }, [battleSession, spritesLoaded]);
+  }, [battleSession?.battleId, spritesLoaded]);
 
   // Draw grid
   const drawGrid = (stage: Container) => {
@@ -415,7 +440,9 @@ export default function BattlePage() {
         return;
       }
 
-      const troopConfig = troops.find((t: any) => t.type === selectedTroopType);
+      // Use selectedTroops directly instead of troops to avoid dependency issues
+      const troopsList = selectedTroops || [];
+      const troopConfig = troopsList.find((t: any) => t.type === selectedTroopType);
       if (!troopConfig) {
         console.log('Troop config not found for:', selectedTroopType);
         return;
@@ -453,7 +480,7 @@ export default function BattlePage() {
           setBattleStatus(`Failed to deploy ${troopTypeToDepl}`);
         });
     },
-    [selectedTroopType, battleSession, troops, deployedCounts]
+    [selectedTroopType, battleSession, selectedTroops, deployedCounts]
   );
 
   // Update click handler when selectedTroopType changes
