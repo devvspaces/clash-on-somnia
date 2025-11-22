@@ -836,9 +836,25 @@ export class BattlesService {
       .orderBy(desc(battles.createdAt))
       .limit(20);
 
-    // Get defender village names for each battle
+    // Filter out battles where session no longer exists and mark them as completed
+    const validBattles = [];
+    for (const battle of activeBattles) {
+      const session = this.battleSessionManager.getSession(battle.id);
+      if (session) {
+        validBattles.push(battle);
+      } else {
+        // Session doesn't exist but battle is marked active - clean it up
+        console.log(`Cleaning up stale battle ${battle.id} - session not found`);
+        await this.db
+          .update(battles)
+          .set({ status: 'completed' })
+          .where(eq(battles.id, battle.id));
+      }
+    }
+
+    // Get defender village names for each valid battle
     const battlesWithDefender = await Promise.all(
-      activeBattles.map(async (battle) => {
+      validBattles.map(async (battle) => {
         const [defenderVillage] = await this.db
           .select({ id: villages.id, name: villages.name })
           .from(villages)
@@ -853,6 +869,38 @@ export class BattlesService {
     );
 
     return battlesWithDefender;
+  }
+
+  /**
+   * Cleanup stale battles (battles marked active but with no session)
+   * Should be called periodically
+   */
+  async cleanupStaleBattles(): Promise<number> {
+    // Find all active battles
+    const activeBattles = await this.db
+      .select({ id: battles.id })
+      .from(battles)
+      .where(eq(battles.status, 'active'));
+
+    let cleanedCount = 0;
+
+    for (const battle of activeBattles) {
+      const session = this.battleSessionManager.getSession(battle.id);
+      if (!session) {
+        // Mark as completed
+        await this.db
+          .update(battles)
+          .set({ status: 'completed' })
+          .where(eq(battles.id, battle.id));
+        cleanedCount++;
+      }
+    }
+
+    if (cleanedCount > 0) {
+      console.log(`Cleaned up ${cleanedCount} stale battles`);
+    }
+
+    return cleanedCount;
   }
 
   /**

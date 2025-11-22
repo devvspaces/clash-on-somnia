@@ -10,6 +10,7 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { BattlesService } from './battles.service';
 import { TroopType } from '../common/config/troops.config';
@@ -18,6 +19,16 @@ import { AttackDto } from './dto/attack.dto';
 @Controller('battles')
 export class BattlesController {
   constructor(private readonly battlesService: BattlesService) {}
+
+  /**
+   * Cleanup stale battles every 5 minutes
+   * Marks battles as 'completed' if their session no longer exists
+   */
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async handleStaleBattleCleanup() {
+    console.log('Running stale battle cleanup...');
+    await this.battlesService.cleanupStaleBattles();
+  }
 
   /**
    * GET /battles/public/recent
