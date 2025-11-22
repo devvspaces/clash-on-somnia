@@ -138,4 +138,20 @@ export const battlesApi = {
     });
     return response.data;
   },
+
+  /**
+   * Get user's active battles (ongoing battles they can rejoin)
+   */
+  getActiveBattles: async (): Promise<{ battles: PublicBattle[] }> => {
+    const response = await apiClient.get('/battles/active');
+    return response.data;
+  },
+
+  /**
+   * Get battle session by session ID (for rejoining)
+   */
+  getBattleSession: async (sessionId: string): Promise<BattleSession> => {
+    const response = await apiClient.get(`/battles/session/${sessionId}`);
+    return response.data;
+  },
 };

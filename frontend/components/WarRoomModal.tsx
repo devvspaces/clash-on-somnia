@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuthStore } from '@/lib/stores/useAuthStore';
+import { useBattleStore } from '@/lib/stores';
 import {
   connectBattleSocket,
   registerForNotifications,
@@ -45,10 +46,11 @@ export function WarRoomModal({ isOpen, onClose }: WarRoomModalProps) {
   const { user, token } = useAuthStore();
   const { toast } = useToast();
 
-  const [activeTab, setActiveTab] = useState('defenses');
+  const [activeTab, setActiveTab] = useState('active');
   const [attacks, setAttacks] = useState<BattleResult[]>([]);
   const [defenses, setDefenses] = useState<BattleResult[]>([]);
   const [liveBattles, setLiveBattles] = useState<PublicBattle[]>([]);
+  const [myActiveBattles, setMyActiveBattles] = useState<PublicBattle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,19 +67,23 @@ export function WarRoomModal({ isOpen, onClose }: WarRoomModalProps) {
       setIsLoading(true);
       setError(null);
 
-      // Load attacks, defenses, and live battles in parallel
-      const [attacksData, defensesData, liveData] = await Promise.all([
+      // Load attacks, defenses, live battles, and user's active battles in parallel
+      const [attacksData, defensesData, liveData, myActiveData] = await Promise.all([
         battlesApi.getHistory(50),
         battlesApi.getDefenses(50),
         battlesApi.getRecentBattles(50),
+        battlesApi.getActiveBattles(),
       ]);
 
       setAttacks(attacksData.battles);
       setDefenses(defensesData.battles);
 
-      // Filter live battles (status === 'active')
+      // Filter live battles (status === 'active') - all public battles
       const activeBattles = liveData.battles.filter(b => b.status === 'active');
       setLiveBattles(activeBattles);
+
+      // User's active battles they can rejoin
+      setMyActiveBattles(myActiveData.battles);
     } catch (err: any) {
       console.error('Failed to load battles:', err);
       setError(err.response?.data?.message || 'Failed to load battles');
@@ -313,6 +319,77 @@ export function WarRoomModal({ isOpen, onClose }: WarRoomModalProps) {
     );
   };
 
+  const renderMyActiveBattleCard = (battle: PublicBattle) => {
+    const { setBattleSession } = useBattleStore();
+
+    const handleRejoin = async () => {
+      try {
+        // Fetch the full battle session to rejoin
+        const session = await battlesApi.getBattleSession(battle.id);
+        setBattleSession(session);
+        onClose(); // Close war room modal
+        router.push(`/battle/${session.session.id}`);
+      } catch (error) {
+        console.error('Failed to rejoin battle:', error);
+        toast({
+          title: 'Failed to rejoin',
+          description: 'Could not rejoin this battle. It may have ended.',
+        });
+      }
+    };
+
+    return (
+      <Card
+        key={battle.id}
+        className="overflow-hidden bg-gray-800/90 border-2 border-green-500 hover:border-green-400"
+      >
+        <CardContent className="p-3">
+          {/* Active Indicator */}
+          <div className="flex items-center justify-between mb-2">
+            <Badge className="text-xs px-2 py-0.5 bg-green-600 text-white">
+              IN PROGRESS
+            </Badge>
+            <Button
+              size="sm"
+              onClick={handleRejoin}
+              className="h-7 text-xs px-2 bg-green-600 hover:bg-green-700"
+            >
+              <Zap className="mr-1 h-3 w-3" />
+              Rejoin Battle
+            </Button>
+          </div>
+
+          {/* Battle Info */}
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <p className="font-bold text-xs text-white">You</p>
+              <p className="text-[10px] text-gray-400">Attacker</p>
+            </div>
+            <Swords className="h-5 w-5 text-green-400" />
+            <div className="text-right">
+              <p className="font-bold text-xs text-white">{battle.defenderVillage.name}</p>
+              <p className="text-[10px] text-gray-400">Defender</p>
+            </div>
+          </div>
+
+          {/* Current Stats */}
+          <div>
+            <div className="flex items-center justify-between text-xs text-gray-300 mb-1">
+              <span>Destruction</span>
+              <span className="font-bold text-white font-numbers">{battle.destructionPercentage}%</span>
+            </div>
+            <Progress value={battle.destructionPercentage} className="h-1.5 bg-gray-700" />
+          </div>
+
+          {/* Time */}
+          <p className="text-[10px] text-gray-400 mt-2">
+            Started {formatDistanceToNow(new Date(battle.createdAt), { addSuffix: true })}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <SlidePanel
       isOpen={isOpen}
@@ -336,7 +413,11 @@ export function WarRoomModal({ isOpen, onClose }: WarRoomModalProps) {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 bg-gray-800 border border-gray-700">
+        <TabsList className="grid w-full grid-cols-4 bg-gray-800 border border-gray-700">
+          <TabsTrigger value="active" className="text-sm data-[state=active]:bg-green-600 data-[state=active]:text-white">
+            <Zap className="mr-1.5 h-4 w-4" />
+            Active ({myActiveBattles.length})
+          </TabsTrigger>
           <TabsTrigger value="defenses" className="text-sm data-[state=active]:bg-blue-600 data-[state=active]:text-white">
             <Shield className="mr-1.5 h-4 w-4" />
             Defenses ({defenses.length})
@@ -350,6 +431,28 @@ export function WarRoomModal({ isOpen, onClose }: WarRoomModalProps) {
             Attacks ({attacks.length})
           </TabsTrigger>
         </TabsList>
+
+        {/* My Active Battles */}
+        <TabsContent value="active" className="space-y-3 mt-0">
+          {isLoading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400 mx-auto"></div>
+              <p className="mt-3 text-sm text-gray-400">Loading active battles...</p>
+            </div>
+          ) : myActiveBattles.length === 0 ? (
+            <Card className="bg-gray-800/90 border-2 border-gray-700">
+              <CardContent className="py-8 text-center">
+                <Zap className="h-12 w-12 mx-auto mb-3 text-green-400" />
+                <h3 className="text-base font-semibold mb-1 text-white">No active battles</h3>
+                <p className="text-sm text-gray-400">
+                  Your ongoing battles will appear here. You can rejoin them if you get disconnected!
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            myActiveBattles.map(renderMyActiveBattleCard)
+          )}
+        </TabsContent>
 
         {/* Defense Log */}
         <TabsContent value="defenses" className="space-y-3 mt-0">

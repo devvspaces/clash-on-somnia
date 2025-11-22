@@ -105,25 +105,46 @@ export default function BattlePage() {
   // Get troops and battle session from store (clean URL approach)
   const troops = selectedTroops || [];
 
-  // Load battle session from store
+  // Load battle session from store or fetch from API on reload
   useEffect(() => {
     if (!sessionId) {
       router.push('/village');
       return;
     }
 
-    // Check if we have battle session data in store
-    if (storedBattleSession) {
-      setBattleSession(storedBattleSession);
-      setIsLoading(false);
-      if (troops.length > 0) {
-        setSelectedTroopType(troops[0].type);
+    const loadBattleSession = async () => {
+      // Check if we have battle session data in store (persisted from localStorage)
+      if (storedBattleSession && storedBattleSession.session.id === sessionId) {
+        console.log('Loaded battle session from store');
+        setBattleSession(storedBattleSession);
+        setIsLoading(false);
+        if (troops.length > 0) {
+          setSelectedTroopType(troops[0].type);
+        }
+      } else {
+        // No session in store or session ID mismatch - try to fetch from API
+        console.log('Fetching battle session from API...');
+        try {
+          const session = await battlesApi.getBattleSession(sessionId);
+          console.log('Fetched battle session from API:', session);
+          setBattleSession(session);
+          setIsLoading(false);
+          // Store in Zustand for future use
+          const { setBattleSession: storeSession } = useBattleStore.getState();
+          storeSession(session);
+          if (troops.length > 0) {
+            setSelectedTroopType(troops[0].type);
+          }
+        } catch (error) {
+          console.error('Failed to fetch battle session:', error);
+          setBattleStatus('Battle session not found or has ended');
+          setIsLoading(false);
+          // Don't redirect immediately - give user a chance to see error
+        }
       }
-    } else {
-      // No session data in store - redirect back to village
-      console.error('No battle session data found in store');
-      router.push('/village');
-    }
+    };
+
+    loadBattleSession();
   }, [sessionId, storedBattleSession, router, troops]);
 
   // Initialize Pixi.js canvas
