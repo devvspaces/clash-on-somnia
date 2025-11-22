@@ -957,6 +957,7 @@ export class BattlesService {
         buildings: session.buildings,
         maxTroops: session.maxTroops,
       },
+      troops: battle.attackerTroops, // Include troops from battle record for rejoin
     };
   }
 }

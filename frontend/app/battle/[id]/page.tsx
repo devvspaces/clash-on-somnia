@@ -102,13 +102,18 @@ export default function BattlePage() {
     preloadSprites();
   }, []);
 
-  // Get troops and battle session from store (clean URL approach)
-  const troops = selectedTroops || [];
+  // Get troops from store or battle session (for rejoin)
+  const troops = selectedTroops || battleSession?.troops || [];
 
   // Load battle session from store or fetch from API on reload
   useEffect(() => {
     if (!sessionId) {
       router.push('/village');
+      return;
+    }
+
+    // Skip if we already loaded this session
+    if (battleSession && battleSession.session.id === sessionId) {
       return;
     }
 
@@ -127,9 +132,14 @@ export default function BattlePage() {
           console.log('Fetched battle session from API:', session);
           setBattleSession(session);
           setIsLoading(false);
-          // Store in Zustand for future use
-          const { setBattleSession: storeSession } = useBattleStore.getState();
+
+          // Store in Zustand for future use (including troops for rejoin)
+          const { setBattleSession: storeSession, setSelectedTroops } = useBattleStore.getState();
           storeSession(session);
+          // If API returned troops (rejoin scenario), store them
+          if (session.troops && session.troops.length > 0) {
+            setSelectedTroops(session.troops);
+          }
           // Don't auto-select troop - user must click to select
         } catch (error) {
           console.error('Failed to fetch battle session:', error);
@@ -141,8 +151,8 @@ export default function BattlePage() {
     };
 
     loadBattleSession();
-    // Only depend on sessionId and storedBattleSession - remove router and troops to prevent infinite loops
-  }, [sessionId, storedBattleSession?.session?.id]);
+    // Only depend on sessionId to prevent duplicate fetches
+  }, [sessionId]);
 
   // Initialize Pixi.js canvas
   useEffect(() => {

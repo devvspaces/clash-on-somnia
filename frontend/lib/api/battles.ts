@@ -43,6 +43,7 @@ export interface BattleSession {
     buildings: BattleBuilding[];
     maxTroops: number;
   };
+  troops?: { type: string; count: number }[]; // Troops from battle record for rejoining
 }
 
 export interface PublicBattle {
