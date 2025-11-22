@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;500;700;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -52,10 +54,25 @@
 @layer base {
   * {
     @apply border-border;
+    cursor: url('/assets/kenney_cursor-pixel-pack/Tiles/tile_0028.png'), auto !important;
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Orbitron', sans-serif;
     font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+
+  /* Gaming font for numbers */
+  .font-numbers {
+    font-family: 'Orbitron', monospace;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Gaming font for headers */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
   }
 }
 
@@ -100,4 +117,35 @@
 
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-gray-400 dark:bg-gray-500;
+}
+
+/* Slide animations */
+@keyframes slide-in-bottom {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-bottom {
+  animation: slide-in-bottom 0.3s ease-out;
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.3s ease-out;
 }

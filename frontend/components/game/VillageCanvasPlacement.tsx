@@ -656,20 +656,7 @@ function createBuildingContainer(
 
   // Health bars are NOT shown in village view - only in battle mode
 
-  // Label (only shown on hover/selection)
-  const label = new PIXI.Text(visualConfig.name, {
-    fontFamily: 'Arial',
-    fontSize: 10,
-    fill: 0xffffff,
-    stroke: 0x000000,
-    strokeThickness: 2,
-    align: 'center',
-  });
-  label.anchor.set(0.5, 0);
-  label.x = width / 2;
-  label.y = -15;
-  label.visible = false; // Hidden by default
-  container.addChild(label);
+  // Label removed - no labels above buildings
 
   // Drag state
   let isDragging = false;
@@ -685,7 +672,6 @@ function createBuildingContainer(
     } else if (buildingRect) {
       buildingRect.tint = 0xcccccc;
     }
-    label.visible = true; // Show label on hover
   });
 
   container.on('pointerout', () => {
@@ -695,7 +681,6 @@ function createBuildingContainer(
       } else if (buildingRect) {
         buildingRect.tint = 0xffffff;
       }
-      label.visible = selectedBuildingRef?.current?.id === building.id; // Hide unless selected
     }
   });
 
@@ -707,7 +692,6 @@ function createBuildingContainer(
       if (selectedBuildingRef && !isShiftClick) {
         selectedBuildingRef.current = building;
       }
-      label.visible = true; // Keep label visible when selected
     }
 
     // Start drag

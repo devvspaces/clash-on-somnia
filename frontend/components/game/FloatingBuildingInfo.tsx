@@ -41,7 +41,7 @@ export function FloatingBuildingInfo({
   };
 
   return (
-    <div className="fixed bottom-6 left-6 z-40 w-80">
+    <div className="fixed bottom-6 left-6 z-40 w-80 animate-slide-in-bottom">
       <Card className="border-2 border-primary shadow-2xl">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">

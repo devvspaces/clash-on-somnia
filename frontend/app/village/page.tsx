@@ -246,13 +246,11 @@ export default function VillagePage() {
         </>
       )}
 
-      {/* Army Training Full Screen Overlay */}
+      {/* Army Training Slide Panel */}
       {showArmyTraining && (
         <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm">
-          <div className="flex h-full items-center justify-center p-4">
-            <div className="w-full max-w-4xl">
-              <ArmyTraining onClose={() => setShowArmyTraining(false)} />
-            </div>
+          <div className="h-full w-full max-w-2xl animate-slide-in-left bg-gray-900 shadow-2xl overflow-auto">
+            <ArmyTraining onClose={() => setShowArmyTraining(false)} />
           </div>
         </div>
       )}

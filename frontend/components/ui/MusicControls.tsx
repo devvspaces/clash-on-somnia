@@ -69,7 +69,7 @@ export function MusicControls() {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
+    <div className="fixed bottom-4 left-4 z-50">
       <div className="flex items-center gap-2 rounded-lg bg-gray-900/90 p-2 shadow-lg backdrop-blur-sm">
         {/* Play/Pause Button */}
         <Button

@@ -1,7 +1,10 @@
 'use client';
 
-import { Coins, Droplet, Users } from 'lucide-react';
+import { Coins, Droplet, Users, LogOut } from 'lucide-react';
 import { ResourcesWithPending } from '@/lib/api';
+import { useAuthStore } from '@/lib/stores';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 
 interface FloatingResourceBarProps {
   villageName: string;
@@ -10,18 +13,29 @@ interface FloatingResourceBarProps {
 }
 
 export function FloatingResourceBar({ villageName, resources, isLoading }: FloatingResourceBarProps) {
+  const router = useRouter();
+  const { logout } = useAuthStore();
+
   const formatNumber = (num: number) => {
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-    return num.toString();
+    return new Intl.NumberFormat('en-US').format(num);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
   };
 
   return (
     <div className="fixed left-1/2 top-4 z-40 -translate-x-1/2">
       <div className="flex items-center gap-4 rounded-lg bg-gray-900/90 px-6 py-3 shadow-2xl backdrop-blur-sm">
+        {/* App Name */}
+        <div className="flex items-center gap-2 border-r border-gray-700 pr-4">
+          <h1 className="text-xl font-bold text-amber-400">Clash on Somnia</h1>
+        </div>
+
         {/* Village Name */}
         <div className="flex items-center gap-2 border-r border-gray-700 pr-4">
-          <h1 className="text-lg font-bold text-white">{villageName}</h1>
+          <h2 className="text-lg font-bold text-white">My Village</h2>
         </div>
 
         {/* Resources */}
@@ -38,11 +52,6 @@ export function FloatingResourceBar({ villageName, resources, isLoading }: Float
                   {formatNumber(resources.gold)}
                 </span>
               </div>
-              {resources.pending?.gold > 0 && (
-                <span className="text-xs text-green-400">
-                  +{formatNumber(resources.pending.gold)}
-                </span>
-              )}
             </div>
 
             {/* Elixir */}
@@ -56,16 +65,11 @@ export function FloatingResourceBar({ villageName, resources, isLoading }: Float
                   {formatNumber(resources.elixir)}
                 </span>
               </div>
-              {resources.pending?.elixir > 0 && (
-                <span className="text-xs text-green-400">
-                  +{formatNumber(resources.pending.elixir)}
-                </span>
-              )}
             </div>
 
             {/* Troops (if available) */}
             {resources.troops !== undefined && (
-              <div className="flex items-center gap-2 border-l border-gray-700 pl-4">
+              <div className="flex items-center gap-2">
                 <div className="rounded-full bg-blue-500/20 p-2">
                   <Users className="h-4 w-4 text-blue-400" />
                 </div>
@@ -84,6 +88,19 @@ export function FloatingResourceBar({ villageName, resources, isLoading }: Float
             <span className="text-sm text-gray-400">Loading...</span>
           </div>
         )}
+
+        {/* Logout Button */}
+        <div className="border-l border-gray-700 pl-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLogout}
+            className="text-white hover:bg-white/20 hover:text-red-400"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Logout
+          </Button>
+        </div>
       </div>
     </div>
   );
