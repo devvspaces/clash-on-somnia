@@ -45,7 +45,7 @@ export function WarRoomModal({ isOpen, onClose }: WarRoomModalProps) {
   const router = useRouter();
   const { user, token } = useAuthStore();
   const { toast } = useToast();
-  const { setBattleSession } = useBattleStore();
+  const { setBattleSession, setSelectedTroops } = useBattleStore();
 
   const [activeTab, setActiveTab] = useState('active');
   const [attacks, setAttacks] = useState<BattleResult[]>([]);
@@ -326,6 +326,12 @@ export function WarRoomModal({ isOpen, onClose }: WarRoomModalProps) {
         // Fetch the full battle session to rejoin
         const session = await battlesApi.getBattleSession(battle.id);
         setBattleSession(session);
+
+        // Set troops for rejoin (API now includes troops in session)
+        if (session.troops && session.troops.length > 0) {
+          setSelectedTroops(session.troops);
+        }
+
         onClose(); // Close war room modal
         router.push(`/battle/${session.session.id}`);
       } catch (error) {

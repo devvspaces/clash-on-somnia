@@ -607,7 +607,7 @@ export default function BattlePage() {
       // Clear battle data from store when leaving battle
       clearBattle();
     };
-  }, [battleSession, router, handleBattleEvent, handleBattleEndEvent, clearBattle]);
+  }, [battleSession, villageId, router, handleBattleEvent, handleBattleEndEvent, clearBattle]); // Added villageId to dependencies
 
   // Handle troop spawn event
   const handleTroopSpawn = (data: any) => {
