@@ -826,7 +826,7 @@ export class BattlesService {
         },
       })
       .from(battles)
-      .leftJoin(villages, eq(battles.attackerId, villages.id))
+      .innerJoin(villages, eq(battles.attackerId, villages.id)) // Use INNER JOIN - attacker must exist
       .where(
         and(
           eq(battles.attackerId, villageId),
@@ -845,26 +845,38 @@ export class BattlesService {
       } else {
         // Session doesn't exist but battle is marked active - clean it up
         console.log(`Cleaning up stale battle ${battle.id} - session not found`);
-        await this.db
-          .update(battles)
-          .set({ status: 'completed' })
-          .where(eq(battles.id, battle.id));
+        try {
+          await this.db
+            .update(battles)
+            .set({ status: 'completed' })
+            .where(eq(battles.id, battle.id));
+        } catch (error) {
+          console.error(`Failed to cleanup stale battle ${battle.id}:`, error);
+        }
       }
     }
 
     // Get defender village names for each valid battle
     const battlesWithDefender = await Promise.all(
       validBattles.map(async (battle) => {
-        const [defenderVillage] = await this.db
-          .select({ id: villages.id, name: villages.name })
-          .from(villages)
-          .where(eq(villages.id, battle.defenderId))
-          .limit(1);
+        try {
+          const [defenderVillage] = await this.db
+            .select({ id: villages.id, name: villages.name })
+            .from(villages)
+            .where(eq(villages.id, battle.defenderId))
+            .limit(1);
 
-        return {
-          ...battle,
-          defenderVillage: defenderVillage || { id: battle.defenderId, name: 'Unknown' },
-        };
+          return {
+            ...battle,
+            defenderVillage: defenderVillage || { id: battle.defenderId || 'unknown', name: 'Unknown' },
+          };
+        } catch (error) {
+          console.error(`Failed to fetch defender village for battle ${battle.id}:`, error);
+          return {
+            ...battle,
+            defenderVillage: { id: battle.defenderId || 'unknown', name: 'Unknown' },
+          };
+        }
       }),
     );
 
@@ -876,31 +888,40 @@ export class BattlesService {
    * Should be called periodically
    */
   async cleanupStaleBattles(): Promise<number> {
-    // Find all active battles
-    const activeBattles = await this.db
-      .select({ id: battles.id })
-      .from(battles)
-      .where(eq(battles.status, 'active'));
+    try {
+      // Find all active battles
+      const activeBattles = await this.db
+        .select({ id: battles.id })
+        .from(battles)
+        .where(eq(battles.status, 'active'));
 
-    let cleanedCount = 0;
+      let cleanedCount = 0;
 
-    for (const battle of activeBattles) {
-      const session = this.battleSessionManager.getSession(battle.id);
-      if (!session) {
-        // Mark as completed
-        await this.db
-          .update(battles)
-          .set({ status: 'completed' })
-          .where(eq(battles.id, battle.id));
-        cleanedCount++;
+      for (const battle of activeBattles) {
+        const session = this.battleSessionManager.getSession(battle.id);
+        if (!session) {
+          // Mark as completed
+          try {
+            await this.db
+              .update(battles)
+              .set({ status: 'completed' })
+              .where(eq(battles.id, battle.id));
+            cleanedCount++;
+          } catch (error) {
+            console.error(`Failed to cleanup battle ${battle.id}:`, error);
+          }
+        }
       }
-    }
 
-    if (cleanedCount > 0) {
-      console.log(`Cleaned up ${cleanedCount} stale battles`);
-    }
+      if (cleanedCount > 0) {
+        console.log(`Cleaned up ${cleanedCount} stale battles`);
+      }
 
-    return cleanedCount;
+      return cleanedCount;
+    } catch (error) {
+      console.error('Error in cleanupStaleBattles:', error);
+      return 0;
+    }
   }
 
   /**
