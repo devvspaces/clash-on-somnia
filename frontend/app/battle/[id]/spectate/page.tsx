@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { Application, Container, Graphics, Text, Sprite as PIXISprite } from 'pixi.js';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { battlesApi, PublicBattle } from '@/lib/api/battles';
 import { useAuthStore } from '@/lib/stores';
 import {
@@ -18,11 +17,12 @@ import {
   offSpectateEnd,
   BattleEvent,
 } from '@/lib/socket';
-import { ArrowLeft, Eye, Users, Clock, Home } from 'lucide-react';
+import { ArrowLeft, Eye, Clock, Star, Trophy, Flame, Users } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { BUILDING_CONFIGS, BuildingType } from '@/lib/config/buildingsData';
 import { SpriteManager } from '@/lib/game/SpriteManager';
 import { getBuildingSprite, CRITICAL_ASSETS } from '@/lib/config/spriteAssets';
+import { motion } from 'framer-motion';
 
 // Troop rendering data
 interface TroopSprite {
@@ -44,14 +44,15 @@ interface BuildingSprite {
   health: number;
   maxHealth: number;
   healthBar?: Graphics;
-  width: number; // Store width for health bar rendering
+  width: number;
 }
 
-// Grid and rendering constants
-const GRID_SIZE = 40;
-const TILE_SIZE = 16;
-const CANVAS_WIDTH = GRID_SIZE * TILE_SIZE;
-const CANVAS_HEIGHT = GRID_SIZE * TILE_SIZE;
+// Grid and rendering constants - UPDATED TO MATCH VILLAGE
+const GRID_WIDTH = 80;
+const GRID_HEIGHT = 40;
+const TILE_SIZE = 15;
+const CANVAS_WIDTH = GRID_WIDTH * TILE_SIZE;
+const CANVAS_HEIGHT = GRID_HEIGHT * TILE_SIZE;
 
 export default function SpectateBattlePage() {
   const router = useRouter();
@@ -88,7 +89,7 @@ export default function SpectateBattlePage() {
         setSpritesLoaded(true);
       } catch (error) {
         console.error('Error preloading spectate sprites:', error);
-        setSpritesLoaded(true); // Continue with fallback
+        setSpritesLoaded(true);
       }
     };
     preloadSprites();
@@ -136,7 +137,7 @@ export default function SpectateBattlePage() {
     const app = new Application({
       width: CANVAS_WIDTH,
       height: CANVAS_HEIGHT,
-      backgroundColor: 0x2d5016,
+      backgroundColor: 0x1a1a1a,
       antialias: true,
     });
 
@@ -155,7 +156,6 @@ export default function SpectateBattlePage() {
     troopsLayerRef.current = troopsLayer;
     effectsLayerRef.current = effectsLayer;
 
-    // Draw grid
     drawGrid(app.stage);
 
     return () => {
@@ -169,14 +169,14 @@ export default function SpectateBattlePage() {
   // Draw grid
   const drawGrid = (stage: Container) => {
     const grid = new Graphics();
-    grid.lineStyle(1, 0x444444, 0.3);
+    grid.lineStyle(1, 0x333333, 0.2);
 
-    for (let x = 0; x <= GRID_SIZE; x++) {
+    for (let x = 0; x <= GRID_WIDTH; x++) {
       grid.moveTo(x * TILE_SIZE, 0);
       grid.lineTo(x * TILE_SIZE, CANVAS_HEIGHT);
     }
 
-    for (let y = 0; y <= GRID_SIZE; y++) {
+    for (let y = 0; y <= GRID_HEIGHT; y++) {
       grid.moveTo(0, y * TILE_SIZE);
       grid.lineTo(CANVAS_WIDTH, y * TILE_SIZE);
     }
@@ -184,43 +184,28 @@ export default function SpectateBattlePage() {
     stage.addChild(grid);
   };
 
-  // Get building color
   const getBuildingColor = (type: string): number => {
     switch (type.toUpperCase()) {
-      case 'TOWN_HALL':
-        return 0xff6b6b;
-      case 'GOLD_MINE':
-        return 0xffd700;
-      case 'ELIXIR_COLLECTOR':
-        return 0x9b59b6;
-      case 'ARMY_CAMP':
-        return 0x3498db;
-      case 'CANNON':
-        return 0x95a5a6;
-      case 'ARCHER_TOWER':
-        return 0x34495e;
-      case 'WALL':
-        return 0x7f8c8d;
-      default:
-        return 0xbdc3c7;
+      case 'TOWN_HALL': return 0xff6b6b;
+      case 'GOLD_MINE': return 0xffd700;
+      case 'ELIXIR_COLLECTOR': return 0x9b59b6;
+      case 'ARMY_CAMP': return 0x3498db;
+      case 'CANNON': return 0x95a5a6;
+      case 'ARCHER_TOWER': return 0x34495e;
+      case 'WALL': return 0x7f8c8d;
+      default: return 0xbdc3c7;
     }
   };
 
-  // Get troop color
   const getTroopColor = (type: string): number => {
     switch (type) {
-      case 'BARBARIAN':
-        return 0xff6b6b;
-      case 'ARCHER':
-        return 0x9b59b6;
-      case 'GIANT':
-        return 0x3498db;
-      default:
-        return 0x95a5a6;
+      case 'BARBARIAN': return 0xff6b6b;
+      case 'ARCHER': return 0x9b59b6;
+      case 'GIANT': return 0x3498db;
+      default: return 0x95a5a6;
     }
   };
 
-  // Create health bar
   const createHealthBar = (health: number, maxHealth: number, width: number): Graphics => {
     const healthBar = new Graphics();
     const barHeight = 3;
@@ -237,27 +222,22 @@ export default function SpectateBattlePage() {
     return healthBar;
   };
 
-  // Render a building
   const renderBuilding = (building: any) => {
     if (!buildingsLayerRef.current) return;
 
     const buildingContainer = new Container();
 
-    // Get building config to determine size
     const buildingType = building.type.toLowerCase() as BuildingType;
     const config = BUILDING_CONFIGS[buildingType];
     const buildingWidth = config ? config.size.width * TILE_SIZE : 2 * TILE_SIZE;
     const buildingHeight = config ? config.size.height * TILE_SIZE : 2 * TILE_SIZE;
 
-    // Create building sprite or fallback to rectangle
     const spriteConfig = getBuildingSprite(buildingType);
     const texture = SpriteManager.getTextureSync(spriteConfig.path);
 
     if (texture && spritesLoaded) {
-      // Use sprite rendering
       const buildingSprite = new PIXISprite(texture);
 
-      // Calculate scale to fit the building size
       const scaleX = buildingWidth / texture.width;
       const scaleY = buildingHeight / texture.height;
       const scale = Math.min(scaleX, scaleY) * (spriteConfig.scaleMultiplier || 1.0);
@@ -269,20 +249,15 @@ export default function SpectateBattlePage() {
 
       buildingContainer.addChild(buildingSprite);
     } else {
-      // Fallback to colored rectangle
       const sprite = new Graphics();
       sprite.beginFill(getBuildingColor(building.type));
       sprite.drawRect(0, 0, buildingWidth, buildingHeight);
       sprite.endFill();
-
-      // Add border
       sprite.lineStyle(1, 0x000000, 0.5);
       sprite.drawRect(0, 0, buildingWidth, buildingHeight);
-
       buildingContainer.addChild(sprite);
     }
 
-    // Add label
     const label = new Text(building.type.replace(/_/g, ' '), {
       fontSize: 8,
       fill: 0xffffff,
@@ -291,12 +266,9 @@ export default function SpectateBattlePage() {
     label.anchor.set(0.5);
     buildingContainer.addChild(label);
 
-    // Position building
     buildingContainer.position.set(building.position.x * TILE_SIZE, building.position.y * TILE_SIZE);
-
     buildingsLayerRef.current.addChild(buildingContainer);
 
-    // Create health bar
     const healthBar = createHealthBar(building.health, building.maxHealth, buildingWidth);
     healthBar.position.set(building.position.x * TILE_SIZE, (building.position.y - 0.5) * TILE_SIZE);
     buildingsLayerRef.current.addChild(healthBar);
@@ -315,8 +287,6 @@ export default function SpectateBattlePage() {
 
   // Battle event handlers
   const handleBattleEvent = useCallback((event: BattleEvent) => {
-    console.log('Spectator received event:', event.type);
-
     switch (event.type) {
       case 'TROOP_SPAWN':
         handleTroopSpawn(event.data);
@@ -343,13 +313,11 @@ export default function SpectateBattlePage() {
   }, []);
 
   const handleBattleEnd = useCallback((result: any) => {
-    console.log('Battle ended:', result);
     setBattleStatus(`Battle ended! ${result.stars} stars - ${result.destructionPercentage}% destruction`);
     setDestructionPercentage(result.destructionPercentage);
     setStars(result.stars);
   }, []);
 
-  // Handle troop spawn
   const handleTroopSpawn = (data: any) => {
     if (!troopsLayerRef.current) return;
 
@@ -384,17 +352,14 @@ export default function SpectateBattlePage() {
     });
   };
 
-  // Handle troop move
   const handleTroopMove = (data: any) => {
     const troopSprite = troopSpritesRef.current.get(data.troopId);
     if (!troopSprite) {
-      console.warn('[Spectate] TROOP_MOVE for unknown troop:', data.troopId, 'Creating it now...');
-      // Troop spawned before spectator joined - create it dynamically
       handleTroopSpawn({
         troopId: data.troopId,
-        troopType: 'BARBARIAN', // Default type, we don't know the actual type
+        troopType: 'BARBARIAN',
         position: data.to,
-        health: 100, // Default health
+        health: 100,
       });
       return;
     }
@@ -410,7 +375,6 @@ export default function SpectateBattlePage() {
     }
   };
 
-  // Handle building attack
   const handleBuildingAttack = (data: any) => {
     const buildingSprite = buildingSpritesRef.current.get(data.buildingId);
     if (!buildingSprite || !buildingSprite.healthBar) return;
@@ -418,7 +382,7 @@ export default function SpectateBattlePage() {
     buildingSprite.health = data.remainingHealth;
 
     buildingSprite.healthBar.clear();
-    const barWidth = buildingSprite.width; // Use actual building width
+    const barWidth = buildingSprite.width;
     const barHeight = 3;
     const healthPercent = buildingSprite.health / buildingSprite.maxHealth;
 
@@ -432,16 +396,13 @@ export default function SpectateBattlePage() {
     buildingSprite.healthBar.drawRect(0, 0, barWidth * healthPercent, barHeight);
     buildingSprite.healthBar.endFill();
 
-    // Show projectile for ranged attacks (archers) or melee effect for melee troops (barbarians)
     if (data.projectile) {
       createProjectile(data.projectile.from, data.projectile.to, data.troopType);
     } else {
-      // Melee attack - show slash effect at building
       createMeleeEffect(buildingSprite.position);
     }
   };
 
-  // Handle troop attacked event
   const handleTroopAttacked = (data: any) => {
     const troopSprite = troopSpritesRef.current.get(data.troopId);
     if (!troopSprite) return;
@@ -470,7 +431,6 @@ export default function SpectateBattlePage() {
     }
   };
 
-  // Handle building destroyed
   const handleBuildingDestroyed = (data: any) => {
     const buildingSprite = buildingSpritesRef.current.get(data.buildingId);
     if (!buildingSprite) return;
@@ -481,7 +441,6 @@ export default function SpectateBattlePage() {
     }
   };
 
-  // Handle troop death
   const handleTroopDeath = (data: any) => {
     const troopSprite = troopSpritesRef.current.get(data.troopId);
     if (!troopSprite) return;
@@ -493,29 +452,23 @@ export default function SpectateBattlePage() {
     troopSpritesRef.current.delete(data.troopId);
   };
 
-  // Create projectile effect for ranged attacks
   const createProjectile = (from: { x: number; y: number }, to: { x: number; y: number }, troopType?: string) => {
     if (!effectsLayerRef.current) return;
 
     const projectile = new Graphics();
 
-    // Different projectiles for different troop types
     if (troopType === 'ARCHER') {
-      // Arrow - thin line with arrowhead
-      projectile.lineStyle(2, 0x8b4513, 1); // brown arrow
+      projectile.lineStyle(2, 0x8b4513, 1);
       projectile.moveTo(0, 0);
       projectile.lineTo(8, 0);
-      // Arrowhead
       projectile.lineTo(6, -2);
       projectile.moveTo(8, 0);
       projectile.lineTo(6, 2);
 
-      // Rotate arrow to face target
       const dx = to.x - from.x;
       const dy = to.y - from.y;
       projectile.rotation = Math.atan2(dy, dx);
     } else {
-      // Default projectile (yellow ball for defense buildings)
       projectile.beginFill(0xffff00);
       projectile.drawCircle(0, 0, 3);
       projectile.endFill();
@@ -546,13 +499,10 @@ export default function SpectateBattlePage() {
     animate();
   };
 
-  // Create melee attack effect
   const createMeleeEffect = (position: { x: number; y: number }) => {
     if (!effectsLayerRef.current) return;
 
     const slash = new Graphics();
-
-    // Draw a slash effect (curved line)
     slash.lineStyle(3, 0xff0000, 0.8);
     slash.arc(0, 0, TILE_SIZE, -Math.PI / 4, Math.PI / 4);
 
@@ -567,7 +517,7 @@ export default function SpectateBattlePage() {
       const progress = elapsed / duration;
 
       slash.alpha = 1 - progress;
-      slash.rotation = progress * Math.PI / 2; // Rotate as it fades
+      slash.rotation = progress * Math.PI / 2;
 
       if (progress < 1) {
         requestAnimationFrame(animate);
@@ -579,43 +529,32 @@ export default function SpectateBattlePage() {
     animate();
   };
 
-  // Connect to WebSocket for live battles (public spectate socket, no auth required)
+  // Connect to WebSocket for live battles
   useEffect(() => {
     if (!battle || battle.status !== 'active') return;
 
-    console.log('[Spectate] Connecting to public spectate socket for battle:', battleId);
     const socket = connectSpectateSocket();
 
-    // Register event handlers immediately (before or after connection)
-    console.log('[Spectate] Registering event handlers...');
     onSpectateEvent(handleBattleEvent);
     onSpectateEnd(handleBattleEnd);
 
-    // Test event listener to debug
     socket.on('battleEvent', (event: any) => {
       console.log('[Spectate] RAW EVENT RECEIVED:', event);
     });
 
-    // Function to join battle
     const joinBattleRoom = () => {
-      console.log('[Spectate] Joining battle room...');
       joinBattleAsSpectator(battleId)
         .then((response) => {
-          console.log('[Spectate] Successfully joined battle:', response);
-          setBattleStatus('Spectating live battle - watching real-time updates');
+          setBattleStatus('Spectating live battle');
           setIsConnected(true);
 
-          // Render initial buildings if session data is available
           if (response.session && response.session.buildings && buildingsLayerRef.current) {
-            console.log('[Spectate] Rendering initial buildings:', response.session.buildings.length);
             response.session.buildings.forEach((building: any) => {
               renderBuilding(building);
             });
           }
 
-          // Render existing troops if any
           if (response.session && response.session.troops && troopsLayerRef.current) {
-            console.log('[Spectate] Rendering existing troops:', response.session.troops.length);
             response.session.troops.forEach((troop: any) => {
               handleTroopSpawn({
                 troopId: troop.id,
@@ -627,38 +566,30 @@ export default function SpectateBattlePage() {
           }
         })
         .catch((error) => {
-          console.error('[Spectate] Failed to join:', error);
           setBattleStatus('Failed to join battle - it may have ended');
           setIsConnected(false);
         });
     };
 
-    // Join immediately if already connected, otherwise wait for connect event
     if (socket.connected) {
-      console.log('[Spectate] Socket already connected, joining immediately');
       joinBattleRoom();
     } else {
-      console.log('[Spectate] Waiting for socket to connect...');
       socket.on('connect', () => {
-        console.log('[Spectate] Connected! Socket ID:', socket.id);
         joinBattleRoom();
       });
     }
 
     socket.on('connect_error', (error) => {
-      console.error('[Spectate] Connection error:', error);
       setIsConnected(false);
       setBattleStatus('Connection failed - battle may have ended');
     });
 
     socket.on('disconnect', () => {
-      console.log('[Spectate] Disconnected from spectate socket');
       setIsConnected(false);
     });
 
     return () => {
-      console.log('[Spectate] Cleaning up spectate socket connection');
-      socket.off('battleEvent'); // Remove raw listener
+      socket.off('battleEvent');
       offSpectateEvent(handleBattleEvent);
       offSpectateEnd(handleBattleEnd);
       leaveSpectatorBattle().catch(console.error);
@@ -668,10 +599,10 @@ export default function SpectateBattlePage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-black">
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-          <p className="mt-4 text-muted-foreground">Loading battle...</p>
+          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-amber-500 border-r-transparent mb-4"></div>
+          <h2 className="text-2xl font-bold text-white">Loading battle...</h2>
         </div>
       </div>
     );
@@ -679,10 +610,13 @@ export default function SpectateBattlePage() {
 
   if (!battle) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-black">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Battle not found</h2>
-          <Button onClick={() => router.push(returnTo)}>
+          <h2 className="text-2xl font-bold mb-4 text-white">Battle not found</h2>
+          <Button
+            onClick={() => router.push(returnTo)}
+            className="bg-amber-500 hover:bg-amber-600"
+          >
             {returnTo === '/war-room' || returnTo === '/village' ? 'Back to Village' : 'Return Home'}
           </Button>
         </div>
@@ -693,133 +627,178 @@ export default function SpectateBattlePage() {
   const isLive = battle.status === 'active';
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Button variant="outline" onClick={() => router.push(returnTo)}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              {returnTo === '/war-room' || returnTo === '/village' ? 'Back to Village' : 'Back to Home'}
-            </Button>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Eye className="w-6 h-6 text-primary" />
-              {isLive ? 'Live Battle' : 'Battle Replay'}
-            </h1>
-            <div className="w-32" />
-          </div>
-        </div>
+    <div className="relative min-h-screen bg-black overflow-hidden">
+      {/* Full-screen canvas */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div
+          ref={canvasRef}
+          style={{
+            width: CANVAS_WIDTH,
+            height: CANVAS_HEIGHT,
+            boxShadow: '0 0 100px rgba(0,0,0,0.8)'
+          }}
+        />
       </div>
 
-      <div className="container mx-auto p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Battle Info */}
-          <div className="space-y-4">
-            {/* Battle Status */}
-            <Card className={`p-4 ${isLive && isConnected ? 'bg-red-50 dark:bg-red-950 border-red-500' : ''}`}>
-              <div className="flex items-center gap-2 mb-2">
-                {isLive && (
-                  <span className="relative flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                  </span>
-                )}
-                <h3 className="font-bold">
-                  {isLive ? 'LIVE BATTLE' : 'COMPLETED BATTLE'}
-                </h3>
+      {/* Floating UI Elements */}
+
+      {/* Top Left - Back Button */}
+      <motion.div
+        initial={{ opacity: 0, x: -50 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="fixed top-6 left-6 z-50"
+      >
+        <Button
+          onClick={() => router.push(returnTo)}
+          className="bg-gray-900/90 backdrop-blur-xl border border-amber-500/30 hover:border-amber-500 text-white hover:bg-gray-800/90 transition-all duration-300 shadow-lg hover:shadow-amber-500/20"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
+      </motion.div>
+
+      {/* Top Right - Live Indicator */}
+      {isLive && (
+        <motion.div
+          initial={{ opacity: 0, x: 50 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="fixed top-6 right-6 z-50"
+        >
+          <div className="bg-gradient-to-br from-red-900/95 to-red-950/95 backdrop-blur-xl rounded-2xl border border-red-500/50 shadow-2xl px-6 py-3 flex items-center gap-3">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+            </span>
+            <span className="text-red-200 font-bold uppercase tracking-wide text-sm">Live Battle</span>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Top Center - Battle Info Panel */}
+      <motion.div
+        initial={{ opacity: 0, y: -50 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="fixed top-6 left-1/2 transform -translate-x-1/2 z-50"
+      >
+        <div className="bg-gradient-to-br from-gray-900/95 to-black/95 backdrop-blur-xl rounded-2xl border border-amber-500/30 shadow-2xl p-4 min-w-[500px]">
+          <div className="flex items-center justify-between gap-6">
+            {/* Destruction */}
+            <div className="flex items-center gap-3">
+              <div className="bg-red-500/20 p-3 rounded-xl border border-red-500/30">
+                <Flame className="w-6 h-6 text-red-400" />
               </div>
-              <p className="text-sm text-muted-foreground">{battleStatus}</p>
-            </Card>
+              <div>
+                <div className="text-xs text-gray-400 uppercase tracking-wide">Destruction</div>
+                <div className="text-2xl font-bold text-white">{destructionPercentage}%</div>
+              </div>
+            </div>
 
-            {/* Matchup */}
-            <Card className="p-4">
-              <h3 className="font-bold mb-3">Matchup</h3>
-              <div className="space-y-3">
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">Attacker</div>
-                  <div className="font-semibold text-lg">{battle.attackerVillage.name}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {battle.attackerTroops.reduce((sum, t) => sum + t.count, 0)} troops
-                  </div>
-                </div>
-                <div className="border-t border-border my-2"></div>
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">Defender</div>
-                  <div className="font-semibold text-lg">{battle.defenderVillage.name}</div>
+            {/* Stars */}
+            <div className="flex items-center gap-3">
+              <div className="bg-yellow-500/20 p-3 rounded-xl border border-yellow-500/30">
+                <Trophy className="w-6 h-6 text-yellow-400" />
+              </div>
+              <div>
+                <div className="text-xs text-gray-400 uppercase tracking-wide">Stars</div>
+                <div className="flex gap-1">
+                  {[1, 2, 3].map((star) => (
+                    <Star
+                      key={star}
+                      className={`w-6 h-6 ${star <= stars ? 'text-yellow-400 fill-yellow-400' : 'text-gray-600'}`}
+                    />
+                  ))}
                 </div>
               </div>
-            </Card>
+            </div>
 
-            {/* Battle Results */}
-            <Card className="p-4">
-              <h3 className="font-bold mb-3">Battle Stats</h3>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Stars</span>
-                  <div className="flex gap-0.5">
-                    {[1, 2, 3].map((star) => (
-                      <span
-                        key={star}
-                        className={`text-lg ${star <= stars ? 'text-yellow-400' : 'text-gray-600'}`}
-                      >
-                        ★
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Destruction</span>
-                  <span className="font-bold">{destructionPercentage}%</span>
-                </div>
-                {!isLive && (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Gold Looted</span>
-                      <span className="text-yellow-500">🪙 {battle.lootGold.toLocaleString()}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Elixir Looted</span>
-                      <span className="text-purple-500">💜 {battle.lootElixir.toLocaleString()}</span>
-                    </div>
-                  </>
-                )}
+            {/* Connection Status */}
+            {isLive && (
+              <div className="flex items-center gap-2 ml-4">
+                <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                <span className="text-sm text-gray-300">{isConnected ? 'Connected' : 'Connecting...'}</span>
               </div>
-            </Card>
-
-            {/* Info */}
-            <Card className="p-4 bg-blue-50 dark:bg-blue-950 border-blue-500">
-              <h3 className="font-bold flex items-center gap-2 mb-2">
-                <Eye className="w-4 h-4" />
-                Spectator Mode
-              </h3>
-              <p className="text-sm">
-                {isLive
-                  ? 'You are watching this battle live. Troops and buildings will update in real-time.'
-                  : 'This battle has ended. You are viewing the final state.'}
-              </p>
-            </Card>
-
-            {isAuthenticated && (
-              <Button variant="default" className="w-full" onClick={() => router.push('/attack')}>
-                Start Your Own Battle
-              </Button>
             )}
           </div>
-
-          {/* Right Column - Battle Canvas */}
-          <div className="lg:col-span-2">
-            <Card className="p-4">
-              <div className="flex justify-center">
-                <div
-                  ref={canvasRef}
-                  className="border-4 border-slate-700 rounded shadow-2xl"
-                  style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT }}
-                />
-              </div>
-            </Card>
-          </div>
         </div>
-      </div>
+      </motion.div>
+
+      {/* Bottom - Battle Info */}
+      <motion.div
+        initial={{ opacity: 0, y: 100 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50"
+      >
+        <div className="bg-gradient-to-br from-gray-900/95 to-black/95 backdrop-blur-xl rounded-2xl border border-amber-500/30 shadow-2xl p-6 min-w-[600px]">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="bg-purple-500/20 p-2 rounded-lg border border-purple-500/30">
+              <Eye className="w-5 h-5 text-purple-400" />
+            </div>
+            <h3 className="text-lg font-bold text-white">Spectator Mode</h3>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {/* Attacker */}
+            <div className="bg-gradient-to-br from-blue-900/20 to-blue-950/20 border border-blue-500/20 rounded-xl p-4">
+              <div className="text-xs text-blue-400 uppercase tracking-wide mb-2 flex items-center gap-2">
+                <Users className="w-3 h-3" />
+                Attacker
+              </div>
+              <div className="font-bold text-white text-lg mb-1">{battle.attackerVillage.name}</div>
+              <div className="text-sm text-gray-400">
+                {battle.attackerTroops.reduce((sum, t) => sum + t.count, 0)} troops deployed
+              </div>
+            </div>
+
+            {/* Defender */}
+            <div className="bg-gradient-to-br from-red-900/20 to-red-950/20 border border-red-500/20 rounded-xl p-4">
+              <div className="text-xs text-red-400 uppercase tracking-wide mb-2 flex items-center gap-2">
+                <Users className="w-3 h-3" />
+                Defender
+              </div>
+              <div className="font-bold text-white text-lg mb-1">{battle.defenderVillage.name}</div>
+              <div className="text-sm text-gray-400">
+                Village defense
+              </div>
+            </div>
+          </div>
+
+          {/* Loot info for completed battles */}
+          {!isLive && (
+            <div className="mt-4 pt-4 border-t border-gray-700 grid grid-cols-2 gap-4">
+              <div className="flex items-center justify-between bg-yellow-500/10 rounded-lg px-3 py-2">
+                <span className="text-sm text-gray-300">Gold Looted</span>
+                <span className="text-yellow-400 font-bold">🪙 {battle.lootGold.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center justify-between bg-purple-500/10 rounded-lg px-3 py-2">
+                <span className="text-sm text-gray-300">Elixir Looted</span>
+                <span className="text-purple-400 font-bold">💜 {battle.lootElixir.toLocaleString()}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Status message */}
+          <div className="mt-4 pt-4 border-t border-gray-700 text-center">
+            <p className="text-sm text-gray-400">
+              {isLive
+                ? 'Watching live battle updates in real-time'
+                : `Battle ended ${formatDistanceToNow(new Date(battle.createdAt), { addSuffix: true })}`
+              }
+            </p>
+          </div>
+
+          {/* Action buttons */}
+          {isAuthenticated && (
+            <div className="mt-4 flex gap-3">
+              <Button
+                onClick={() => router.push('/attack')}
+                className="flex-1 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold shadow-lg hover:shadow-amber-500/50 transition-all"
+              >
+                Start Your Battle
+              </Button>
+            </div>
+          )}
+        </div>
+      </motion.div>
     </div>
   );
 }

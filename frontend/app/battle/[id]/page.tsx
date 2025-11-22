@@ -4,8 +4,6 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Application, Container, Graphics, Text, Sprite as PIXISprite } from 'pixi.js';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Navbar } from '@/components/layout/Navbar';
 import { BattleBuilding, BattleSession, battlesApi } from '@/lib/api/battles';
 import { useAuthStore, useBattleStore, useVillageStore } from '@/lib/stores';
 import {
@@ -20,11 +18,12 @@ import {
   offBattleEnd,
   BattleEvent,
 } from '@/lib/socket';
-import { Sword, Shield, Target, X, Home, ArrowLeft, Clock } from 'lucide-react';
+import { ArrowLeft, Clock, Star, Swords, Trophy, Flame } from 'lucide-react';
 import { BattleSummary } from '@/components/game/BattleSummary';
 import { BUILDING_CONFIGS, BuildingType } from '@/lib/config/buildingsData';
 import { SpriteManager } from '@/lib/game/SpriteManager';
 import { getBuildingSprite, CRITICAL_ASSETS } from '@/lib/config/spriteAssets';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Troop rendering data
 interface TroopSprite {
@@ -46,14 +45,15 @@ interface BuildingSprite {
   health: number;
   maxHealth: number;
   healthBar?: Graphics;
-  width: number; // Store width for health bar rendering
+  width: number;
 }
 
-// Grid and rendering constants
-const GRID_SIZE = 40;
-const TILE_SIZE = 16; // Smaller tiles for better fit
-const CANVAS_WIDTH = GRID_SIZE * TILE_SIZE;
-const CANVAS_HEIGHT = GRID_SIZE * TILE_SIZE;
+// Grid and rendering constants - UPDATED TO MATCH VILLAGE
+const GRID_WIDTH = 80;
+const GRID_HEIGHT = 40;
+const TILE_SIZE = 15; // Match village tile size
+const CANVAS_WIDTH = GRID_WIDTH * TILE_SIZE;
+const CANVAS_HEIGHT = GRID_HEIGHT * TILE_SIZE;
 
 export default function BattlePage() {
   const router = useRouter();
@@ -80,9 +80,12 @@ export default function BattlePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
   const [battleEndResult, setBattleEndResult] = useState<any>(null);
-  const [timeRemaining, setTimeRemaining] = useState(180); // 3 minutes in seconds
+  const [timeRemaining, setTimeRemaining] = useState(180);
   const [battleStartTime, setBattleStartTime] = useState<number | null>(null);
   const [spritesLoaded, setSpritesLoaded] = useState(false);
+  const [stars, setStars] = useState(0);
+  const [draggedTroop, setDraggedTroop] = useState<{ type: string; offsetX: number; offsetY: number } | null>(null);
+  const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
 
   // Store sprites
   const buildingSpritesRef = useRef<Map<string, BuildingSprite>>(new Map());
@@ -96,96 +99,72 @@ export default function BattlePage() {
         setSpritesLoaded(true);
       } catch (error) {
         console.error('Error preloading battle sprites:', error);
-        setSpritesLoaded(true); // Continue with fallback
+        setSpritesLoaded(true);
       }
     };
     preloadSprites();
   }, []);
 
-  // Ensure village is loaded (needed for villageId to connect WebSocket)
+  // Ensure village is loaded
   useEffect(() => {
     if (!village && isAuthenticated) {
-      console.log('Village not loaded, fetching...');
       fetchVillage();
     }
   }, [village, isAuthenticated, fetchVillage]);
 
-  // Get troops from store or battle session (for rejoin)
   const troops = selectedTroops || battleSession?.troops || [];
 
-  // Load battle session from store or fetch from API on reload
+  // Load battle session
   useEffect(() => {
     if (!sessionId) {
       router.push('/village');
       return;
     }
 
-    // Skip if we already loaded this session
     if (battleSession && battleSession.session.id === sessionId) {
       return;
     }
 
     const loadBattleSession = async () => {
-      // Check if we have battle session data in store (persisted from localStorage)
       if (storedBattleSession && storedBattleSession.session.id === sessionId) {
-        console.log('Loaded battle session from store');
         setBattleSession(storedBattleSession);
         setIsLoading(false);
-        // Don't auto-select troop - user must click to select
       } else {
-        // No session in store or session ID mismatch - try to fetch from API
-        console.log('Fetching battle session from API...');
         try {
           const session = await battlesApi.getBattleSession(sessionId);
-          console.log('Fetched battle session from API:', session);
           setBattleSession(session);
           setIsLoading(false);
 
-          // Store in Zustand for future use (including troops for rejoin)
           const { setBattleSession: storeSession, setSelectedTroops } = useBattleStore.getState();
           storeSession(session);
-          // If API returned troops (rejoin scenario), store them
           if (session.troops && session.troops.length > 0) {
             setSelectedTroops(session.troops);
           }
-          // Don't auto-select troop - user must click to select
         } catch (error) {
           console.error('Failed to fetch battle session:', error);
           setBattleStatus('Battle session not found or has ended');
           setIsLoading(false);
-          // Don't redirect immediately - give user a chance to see error
         }
       }
     };
 
     loadBattleSession();
-    // Only depend on sessionId to prevent duplicate fetches
   }, [sessionId]);
 
   // Initialize Pixi.js canvas
   useEffect(() => {
     if (!canvasRef.current || appRef.current || !battleSession || !spritesLoaded) {
-      console.log('Pixi init skipped:', {
-        hasCanvas: !!canvasRef.current,
-        hasApp: !!appRef.current,
-        hasBattleSession: !!battleSession,
-        spritesLoaded
-      });
       return;
     }
 
-    console.log('Initializing Pixi.js application...');
-
     const initPixi = () => {
-      // Pixi.js v7 syntax
       const app = new Application({
         width: CANVAS_WIDTH,
         height: CANVAS_HEIGHT,
-        backgroundColor: 0x2d5016, // Grass green
+        backgroundColor: 0x1a1a1a, // Dark background
         antialias: true,
       });
 
-      // Clear any existing canvas content
       if (canvasRef.current) {
         canvasRef.current.innerHTML = '';
         canvasRef.current.appendChild(app.view as HTMLCanvasElement);
@@ -193,7 +172,6 @@ export default function BattlePage() {
 
       appRef.current = app;
 
-      // Create layers
       const stage = new Container();
       const buildingsLayer = new Container();
       const troopsLayer = new Container();
@@ -210,24 +188,19 @@ export default function BattlePage() {
       troopsLayerRef.current = troopsLayer;
       effectsLayerRef.current = effectsLayer;
 
-      // Draw grid
+      // Draw subtle grid
       drawGrid(app.stage);
 
       // Render buildings
-      console.log('Rendering buildings:', battleSession.session.buildings);
       renderBuildings(battleSession.session.buildings, buildingsLayer);
 
-      // Add click handler for troop deployment
       app.stage.eventMode = 'static';
       app.stage.hitArea = app.screen;
-
-      console.log('Pixi.js application initialized successfully');
     };
 
     initPixi();
 
     return () => {
-      console.log('Cleaning up Pixi.js application...');
       if (appRef.current) {
         appRef.current.destroy(true, { children: true, texture: false, baseTexture: false });
         appRef.current = null;
@@ -244,14 +217,14 @@ export default function BattlePage() {
   // Draw grid
   const drawGrid = (stage: Container) => {
     const grid = new Graphics();
-    grid.lineStyle(1, 0x444444, 0.3);
+    grid.lineStyle(1, 0x333333, 0.2);
 
-    for (let x = 0; x <= GRID_SIZE; x++) {
+    for (let x = 0; x <= GRID_WIDTH; x++) {
       grid.moveTo(x * TILE_SIZE, 0);
       grid.lineTo(x * TILE_SIZE, CANVAS_HEIGHT);
     }
 
-    for (let y = 0; y <= GRID_SIZE; y++) {
+    for (let y = 0; y <= GRID_HEIGHT; y++) {
       grid.moveTo(0, y * TILE_SIZE);
       grid.lineTo(CANVAS_WIDTH, y * TILE_SIZE);
     }
@@ -259,27 +232,21 @@ export default function BattlePage() {
     stage.addChild(grid);
   };
 
-  // Render buildings on canvas
+  // Render buildings
   const renderBuildings = (buildings: BattleBuilding[], layer: Container) => {
-    console.log('renderBuildings called with:', buildings);
     buildings.forEach((building) => {
       const buildingContainer = new Container();
 
-      // Get building config to determine size
       const buildingType = building.type.toLowerCase() as BuildingType;
       const config = BUILDING_CONFIGS[buildingType];
       const buildingWidth = config ? config.size.width * TILE_SIZE : 2 * TILE_SIZE;
       const buildingHeight = config ? config.size.height * TILE_SIZE : 2 * TILE_SIZE;
 
-      // Create building sprite or fallback to rectangle
       const spriteConfig = getBuildingSprite(buildingType);
       const texture = SpriteManager.getTextureSync(spriteConfig.path);
 
       if (texture && spritesLoaded) {
-        // Use sprite rendering
         const buildingSprite = new PIXISprite(texture);
-
-        // Calculate scale to fit the building size
         const scaleX = buildingWidth / texture.width;
         const scaleY = buildingHeight / texture.height;
         const scale = Math.min(scaleX, scaleY) * (spriteConfig.scaleMultiplier || 1.0);
@@ -291,20 +258,15 @@ export default function BattlePage() {
 
         buildingContainer.addChild(buildingSprite);
       } else {
-        // Fallback to colored rectangle
         const sprite = new Graphics();
         sprite.beginFill(getBuildingColor(building.type));
         sprite.drawRect(0, 0, buildingWidth, buildingHeight);
         sprite.endFill();
-
-        // Add border
         sprite.lineStyle(1, 0x000000, 0.5);
         sprite.drawRect(0, 0, buildingWidth, buildingHeight);
-
         buildingContainer.addChild(sprite);
       }
 
-      // Add label
       const label = new Text(building.type.replace(/_/g, ' '), {
         fontSize: 8,
         fill: 0xffffff,
@@ -313,13 +275,9 @@ export default function BattlePage() {
       label.anchor.set(0.5);
       buildingContainer.addChild(label);
 
-      // Position building
       buildingContainer.position.set(building.position.x * TILE_SIZE, building.position.y * TILE_SIZE);
-
       layer.addChild(buildingContainer);
-      console.log(`Added building ${building.id} at (${building.position.x}, ${building.position.y})`);
 
-      // Create health bar
       const healthBar = createHealthBar(building.health, building.maxHealth, buildingWidth);
       healthBar.position.set(building.position.x * TILE_SIZE, (building.position.y - 0.5) * TILE_SIZE);
       layer.addChild(healthBar);
@@ -335,32 +293,21 @@ export default function BattlePage() {
         width: buildingWidth,
       });
     });
-    console.log(`Rendered ${buildings.length} buildings`);
   };
 
-  // Get building color based on type
   const getBuildingColor = (type: string): number => {
     switch (type.toUpperCase()) {
-      case 'TOWN_HALL':
-        return 0xff6b6b;
-      case 'GOLD_MINE':
-        return 0xffd700;
-      case 'ELIXIR_COLLECTOR':
-        return 0x9b59b6;
-      case 'ARMY_CAMP':
-        return 0x3498db;
-      case 'CANNON':
-        return 0x95a5a6;
-      case 'ARCHER_TOWER':
-        return 0x34495e;
-      case 'WALL':
-        return 0x7f8c8d;
-      default:
-        return 0xbdc3c7;
+      case 'TOWN_HALL': return 0xff6b6b;
+      case 'GOLD_MINE': return 0xffd700;
+      case 'ELIXIR_COLLECTOR': return 0x9b59b6;
+      case 'ARMY_CAMP': return 0x3498db;
+      case 'CANNON': return 0x95a5a6;
+      case 'ARCHER_TOWER': return 0x34495e;
+      case 'WALL': return 0x7f8c8d;
+      default: return 0xbdc3c7;
     }
   };
 
-  // Create health bar
   const createHealthBar = (health: number, maxHealth: number, width: number): Graphics => {
     const healthBar = new Graphics();
     const barHeight = 3;
@@ -391,7 +338,6 @@ export default function BattlePage() {
       setTimeRemaining(remaining);
 
       if (remaining === 0) {
-        // Time's up - battle should end (handled by backend)
         clearInterval(timer);
       }
     }, 1000);
@@ -399,68 +345,48 @@ export default function BattlePage() {
     return () => clearInterval(timer);
   }, [battleStarted, battleStartTime, battleEndResult]);
 
-  // Define battle event handlers
+  // Battle event handlers
   const handleBattleEndEvent = useCallback((result: any) => {
-    console.log('Battle ended:', result);
     setBattleStatus(`Battle Over! ${result.stars} Stars - ${result.destructionPercentage}% Destruction`);
     setDestructionPercentage(result.destructionPercentage);
-
-    // Show battle summary instead of auto-redirecting
+    setStars(result.stars || 0);
     setBattleEndResult(result);
   }, []);
 
   const handleBattleEvent = useCallback((event: BattleEvent) => {
-    console.log('📡 Battle event received:', event.type, event.data);
-
     switch (event.type) {
       case 'TROOP_SPAWN':
-        console.log('Handling TROOP_SPAWN:', event.data);
         handleTroopSpawn(event.data);
         break;
       case 'TROOP_MOVE':
-        console.log('Handling TROOP_MOVE');
         handleTroopMove(event.data);
         break;
       case 'TROOP_ATTACK':
-        console.log('Handling TROOP_ATTACK');
         handleTroopAttacked(event.data);
         break;
       case 'TROOP_DEATH':
-        console.log('Handling TROOP_DEATH');
         handleTroopDeath(event.data);
         break;
       case 'BUILDING_ATTACK':
-        console.log('Handling BUILDING_ATTACK');
         handleBuildingAttack(event.data);
         break;
       case 'BUILDING_DESTROYED':
-        console.log('Handling BUILDING_DESTROYED');
         handleBuildingDestroyed(event.data);
         break;
       case 'BATTLE_END':
-        console.log('Handling BATTLE_END');
         handleBattleEndEvent(event.data);
         break;
-      default:
-        console.log('Unknown event type:', event.type);
     }
   }, [handleBattleEndEvent]);
 
   // Handle canvas click for troop deployment
   const handleCanvasClick = useCallback(
     (event: any) => {
-      if (!selectedTroopType || !battleSession) {
-        console.log('Cannot deploy: no troop selected or no battle session');
-        return;
-      }
+      if (!selectedTroopType || !battleSession) return;
 
-      // Use selectedTroops directly instead of troops to avoid dependency issues
       const troopsList = selectedTroops || [];
       const troopConfig = troopsList.find((t: any) => t.type === selectedTroopType);
-      if (!troopConfig) {
-        console.log('Troop config not found for:', selectedTroopType);
-        return;
-      }
+      if (!troopConfig) return;
 
       const deployed = deployedCounts[selectedTroopType] || 0;
       if (deployed >= troopConfig.count) {
@@ -472,15 +398,10 @@ export default function BattlePage() {
       const gridX = Math.floor(pos.x / TILE_SIZE);
       const gridY = Math.floor(pos.y / TILE_SIZE);
 
-      console.log('Deploying troop:', { battleId: battleSession.battleId, troopType: selectedTroopType, position: { x: gridX, y: gridY } });
-
-      // Capture troop type in local variable to avoid closure issue
       const troopTypeToDepl = selectedTroopType;
 
-      // Deploy troop via WebSocket
       deployTroop(battleSession.battleId, troopTypeToDepl, { x: gridX, y: gridY })
         .then((response) => {
-          console.log('Troop deploy response:', response);
           setDeployedCounts((prev) => ({
             ...prev,
             [troopTypeToDepl]: (prev[troopTypeToDepl] || 0) + 1,
@@ -497,13 +418,11 @@ export default function BattlePage() {
     [selectedTroopType, battleSession, selectedTroops, deployedCounts]
   );
 
-  // Update click handler when selectedTroopType changes
+  // Update click handler
   useEffect(() => {
     if (!appRef.current?.stage) return;
 
-    // Remove old listener
     appRef.current.stage.off('pointerdown', handleCanvasClick);
-    // Add new listener with updated closure
     appRef.current.stage.on('pointerdown', handleCanvasClick);
 
     return () => {
@@ -513,75 +432,48 @@ export default function BattlePage() {
     };
   }, [handleCanvasClick]);
 
-  // Connect to WebSocket and join battle
+  // Connect to WebSocket
   useEffect(() => {
-    console.log('WebSocket useEffect check:', {
-      hasBattleSession: !!battleSession,
-      hasVillageId: !!villageId,
-      villageId
-    });
+    if (!battleSession || !villageId) return;
 
-    if (!battleSession || !villageId) {
-      console.log('Skipping WebSocket connection - missing battleSession or villageId');
-      return;
-    }
-
-    // Get token from localStorage (stored as 'auth_token' by the auth store)
     const token = localStorage.getItem('auth_token');
 
     if (!token) {
-      console.error('No authentication token found');
       setBattleStatus('Authentication error - please log in again');
       setIsConnected(false);
       setTimeout(() => router.push('/login'), 2000);
       return;
     }
 
-    console.log('Connecting to battle WebSocket with token...');
     const socket = connectBattleSocket(token);
 
-    // Wait for connection before joining battle
     const connectionTimeout = setTimeout(() => {
       if (!socket.connected) {
-        console.error('WebSocket connection timeout');
         setBattleStatus('Connection failed - retrying...');
       }
     }, 5000);
 
     socket.on('connect', () => {
-      console.log('WebSocket connected! Joining battle room...');
       setIsConnected(true);
-      setBattleStatus('Select a troop type below, then click on the map to deploy!');
+      setBattleStatus('Select a troop below, then click on the map to deploy!');
       clearTimeout(connectionTimeout);
 
-      // Register event handlers after socket connects
-      console.log('Registering battle event handlers...');
       onBattleEvent(handleBattleEvent);
       onBattleEnd(handleBattleEndEvent);
-      console.log('Event handlers registered!');
 
-      // Join battle room after connection is established
       joinBattle(battleSession.battleId, villageId)
         .then((response) => {
-          console.log('Successfully joined battle room:', response);
-
-          // Check if user is just a spectator
           if (response.isAttacker === false) {
             setBattleStatus('Spectating battle - you cannot deploy troops');
             setIsConnected(true);
           } else {
-            setBattleStatus('Select a troop type below, then click on the map to deploy!');
+            setBattleStatus('Select a troop below, then click on the map to deploy!');
           }
         })
         .catch((error) => {
-          console.error('Failed to join battle:', error);
-
-          // Check if battle has ended
           if (error.message && (error.message.includes('ended') || error.message.includes('not found'))) {
             setBattleStatus('This battle has ended. Redirecting...');
-            setTimeout(() => {
-              router.push('/village');
-            }, 2000);
+            setTimeout(() => router.push('/village'), 2000);
           } else {
             setBattleStatus('Failed to join battle - please refresh');
           }
@@ -589,13 +481,11 @@ export default function BattlePage() {
     });
 
     socket.on('connect_error', (error) => {
-      console.error('WebSocket connection error:', error);
       setIsConnected(false);
       setBattleStatus('Connection error - check if backend is running');
     });
 
     socket.on('disconnect', () => {
-      console.log('WebSocket disconnected');
       setIsConnected(false);
       setBattleStatus('Disconnected from battle server');
     });
@@ -604,50 +494,34 @@ export default function BattlePage() {
       clearTimeout(connectionTimeout);
       leaveBattle().catch(console.error);
       disconnectBattleSocket();
-      // Clear battle data from store when leaving battle
       clearBattle();
     };
-  }, [battleSession, villageId, router, handleBattleEvent, handleBattleEndEvent, clearBattle]); // Added villageId to dependencies
+  }, [battleSession, villageId, router, handleBattleEvent, handleBattleEndEvent, clearBattle]);
 
-  // Handle troop spawn event
+  // Troop spawn handler
   const handleTroopSpawn = (data: any) => {
-    console.log('🎖️ handleTroopSpawn called with data:', data);
-
-    if (!troopsLayerRef.current) {
-      console.error('❌ troopsLayerRef.current is null!');
-      return;
-    }
-
-    console.log('✅ troopsLayerRef exists, creating troop sprite...');
+    if (!troopsLayerRef.current) return;
 
     const troopContainer = new Container();
 
-    // Create troop sprite (circle)
     const sprite = new Graphics();
     sprite.beginFill(getTroopColor(data.troopType));
     sprite.drawCircle(0, 0, TILE_SIZE / 2.5);
     sprite.endFill();
-
-    // Add border
     sprite.lineStyle(1, 0x000000, 0.5);
     sprite.drawCircle(0, 0, TILE_SIZE / 2.5);
 
     troopContainer.addChild(sprite);
 
-    // Position troop
     const pixelX = data.position.x * TILE_SIZE + TILE_SIZE / 2;
     const pixelY = data.position.y * TILE_SIZE + TILE_SIZE / 2;
     troopContainer.position.set(pixelX, pixelY);
-    console.log(`📍 Positioned troop at grid (${data.position.x}, ${data.position.y}) = pixel (${pixelX}, ${pixelY})`);
 
     troopsLayerRef.current.addChild(troopContainer);
-    console.log('✅ Added troop container to troops layer');
 
-    // Create health bar
     const healthBar = createHealthBar(data.health, data.health, TILE_SIZE);
     healthBar.position.set(data.position.x * TILE_SIZE, (data.position.y - 0.3) * TILE_SIZE);
     troopsLayerRef.current.addChild(healthBar);
-    console.log('✅ Added health bar');
 
     troopSpritesRef.current.set(data.troopId, {
       id: data.troopId,
@@ -658,25 +532,17 @@ export default function BattlePage() {
       maxHealth: data.health,
       healthBar,
     });
-
-    console.log(`✅ Troop ${data.troopId} fully spawned! Total troops: ${troopSpritesRef.current.size}`);
   };
 
-  // Get troop color based on type
   const getTroopColor = (type: string): number => {
     switch (type) {
-      case 'BARBARIAN':
-        return 0xff6b6b;
-      case 'ARCHER':
-        return 0x9b59b6;
-      case 'GIANT':
-        return 0x3498db;
-      default:
-        return 0x95a5a6;
+      case 'BARBARIAN': return 0xff6b6b;
+      case 'ARCHER': return 0x9b59b6;
+      case 'GIANT': return 0x3498db;
+      default: return 0x95a5a6;
     }
   };
 
-  // Handle troop move event
   const handleTroopMove = (data: any) => {
     const troopSprite = troopSpritesRef.current.get(data.troopId);
     if (!troopSprite) return;
@@ -689,7 +555,6 @@ export default function BattlePage() {
     }
   };
 
-  // Handle building attack event
   const handleBuildingAttack = (data: any) => {
     const buildingSprite = buildingSpritesRef.current.get(data.buildingId);
     if (!buildingSprite) return;
@@ -698,7 +563,7 @@ export default function BattlePage() {
 
     if (buildingSprite.healthBar) {
       buildingSprite.healthBar.clear();
-      const barWidth = buildingSprite.width; // Use actual building width
+      const barWidth = buildingSprite.width;
       const barHeight = 3;
       const healthPercent = buildingSprite.health / buildingSprite.maxHealth;
 
@@ -713,16 +578,13 @@ export default function BattlePage() {
       buildingSprite.healthBar.endFill();
     }
 
-    // Show projectile for ranged attacks (archers) or melee effect for melee troops (barbarians)
     if (data.projectile) {
       createProjectile(data.projectile.from, data.projectile.to, data.troopType);
     } else {
-      // Melee attack - show slash effect at building
       createMeleeEffect(buildingSprite.position);
     }
   };
 
-  // Handle troop attacked event
   const handleTroopAttacked = (data: any) => {
     const troopSprite = troopSpritesRef.current.get(data.troopId);
     if (!troopSprite) return;
@@ -751,7 +613,6 @@ export default function BattlePage() {
     }
   };
 
-  // Handle building destroyed event
   const handleBuildingDestroyed = (data: any) => {
     const buildingSprite = buildingSpritesRef.current.get(data.buildingId);
     if (!buildingSprite) return;
@@ -763,7 +624,6 @@ export default function BattlePage() {
     }
   };
 
-  // Handle troop death event
   const handleTroopDeath = (data: any) => {
     const troopSprite = troopSpritesRef.current.get(data.troopId);
     if (!troopSprite) return;
@@ -776,29 +636,23 @@ export default function BattlePage() {
     troopSpritesRef.current.delete(data.troopId);
   };
 
-  // Create projectile effect for ranged attacks
   const createProjectile = (from: { x: number; y: number }, to: { x: number; y: number }, troopType?: string) => {
     if (!effectsLayerRef.current) return;
 
     const projectile = new Graphics();
 
-    // Different projectiles for different troop types
     if (troopType === 'ARCHER') {
-      // Arrow - thin line with arrowhead
-      projectile.lineStyle(2, 0x8b4513, 1); // brown arrow
+      projectile.lineStyle(2, 0x8b4513, 1);
       projectile.moveTo(0, 0);
       projectile.lineTo(8, 0);
-      // Arrowhead
       projectile.lineTo(6, -2);
       projectile.moveTo(8, 0);
       projectile.lineTo(6, 2);
 
-      // Rotate arrow to face target
       const dx = to.x - from.x;
       const dy = to.y - from.y;
       projectile.rotation = Math.atan2(dy, dx);
     } else {
-      // Default projectile (yellow ball for defense buildings)
       projectile.beginFill(0xffff00);
       projectile.drawCircle(0, 0, 3);
       projectile.endFill();
@@ -829,13 +683,10 @@ export default function BattlePage() {
     animate();
   };
 
-  // Create melee attack effect
   const createMeleeEffect = (position: { x: number; y: number }) => {
     if (!effectsLayerRef.current) return;
 
     const slash = new Graphics();
-
-    // Draw a slash effect (curved line)
     slash.lineStyle(3, 0xff0000, 0.8);
     slash.arc(0, 0, TILE_SIZE, -Math.PI / 4, Math.PI / 4);
 
@@ -850,7 +701,7 @@ export default function BattlePage() {
       const progress = elapsed / duration;
 
       slash.alpha = 1 - progress;
-      slash.rotation = progress * Math.PI / 2; // Rotate as it fades
+      slash.rotation = progress * Math.PI / 2;
 
       if (progress < 1) {
         requestAnimationFrame(animate);
@@ -862,7 +713,6 @@ export default function BattlePage() {
     animate();
   };
 
-  // Create explosion effect
   const createExplosion = (position: { x: number; y: number }, scale: number = 1) => {
     if (!effectsLayerRef.current) return;
 
@@ -894,167 +744,237 @@ export default function BattlePage() {
     animate();
   };
 
+  // Get troop icon
+  const getTroopIcon = (type: string) => {
+    switch (type) {
+      case 'BARBARIAN': return '⚔️';
+      case 'ARCHER': return '🏹';
+      case 'GIANT': return '🦾';
+      default: return '👤';
+    }
+  };
+
   if (isLoading || !battleSession) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-black">
         <div className="text-center">
-          <h2 className="text-2xl font-bold">Loading battle...</h2>
+          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-amber-500 border-r-transparent mb-4"></div>
+          <h2 className="text-2xl font-bold text-white">Loading battle...</h2>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-100 via-orange-100 to-yellow-100 dark:from-red-950 dark:via-orange-950 dark:to-yellow-950">
-      <Navbar />
-
-      <div className="container mx-auto p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <Button variant="outline" onClick={() => router.push('/village')}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Village
-          </Button>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Sword className="w-6 h-6 text-red-500" />
-            Battle in Progress
-          </h1>
-          <div className="w-32" /> {/* Spacer for centering */}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Controls */}
-          <div className="space-y-4">
-            {/* Connection Status */}
-            <Card className={`p-4 ${isConnected ? 'bg-green-50 dark:bg-green-950 border-green-500' : 'bg-yellow-50 dark:bg-yellow-950 border-yellow-500'}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`} />
-                <h3 className="font-bold text-sm">
-                  {isConnected ? 'Connected to Battle Server' : 'Connecting...'}
-                </h3>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {isConnected ? 'Ready to deploy troops!' : 'Please wait...'}
-              </p>
-            </Card>
-
-            {/* Battle Info */}
-            <Card className="p-4">
-              <h3 className="font-bold text-lg mb-2">Battle Status</h3>
-              <p className="text-sm mb-2">{battleStatus}</p>
-              <div className="space-y-2">
-                {/* Battle Timer */}
-                {battleStarted && !battleEndResult && (
-                  <div className="flex items-center justify-between text-sm p-2 bg-blue-50 dark:bg-blue-950 rounded">
-                    <span className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-blue-500" />
-                      Time Remaining:
-                    </span>
-                    <span className={`font-bold font-mono ${timeRemaining < 30 ? 'text-red-600 animate-pulse' : 'text-blue-600'}`}>
-                      {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
-                    </span>
-                  </div>
-                )}
-                <div className="flex items-center justify-between text-sm">
-                  <span>Destruction:</span>
-                  <span className="font-bold text-red-600">{destructionPercentage}%</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span>Battle ID:</span>
-                  <span className="font-mono text-xs">{battleSession.battleId.slice(0, 8)}</span>
-                </div>
-              </div>
-            </Card>
-
-            {/* Troop Selection */}
-            <Card className="p-4">
-              <h3 className="font-bold text-lg mb-3">Deploy Troops</h3>
-              <div className="space-y-2">
-                {troops.map((troop: any) => {
-                  const deployed = deployedCounts[troop.type] || 0;
-                  const remaining = troop.count - deployed;
-
-                  return (
-                    <Button
-                      key={troop.type}
-                      variant={selectedTroopType === troop.type ? 'default' : 'outline'}
-                      size="lg"
-                      onClick={() => {
-                        setSelectedTroopType(troop.type);
-                        setBattleStatus(`${troop.type} selected! Click on the map to deploy.`);
-                      }}
-                      disabled={remaining === 0}
-                      className="w-full justify-between"
-                    >
-                      <span className="flex items-center gap-2">
-                        <Target className="w-4 h-4" />
-                        {troop.type}
-                      </span>
-                      <span className="font-mono">
-                        {remaining}/{troop.count}
-                      </span>
-                    </Button>
-                  );
-                })}
-              </div>
-            </Card>
-
-            {/* Instructions */}
-            <Card className="p-4 bg-blue-50 dark:bg-blue-950 border-2 border-blue-500">
-              <h3 className="font-bold text-base mb-3 flex items-center gap-2 text-blue-900 dark:text-blue-100">
-                <Shield className="w-5 h-5" />
-                How to Deploy Troops
-              </h3>
-              <ul className="text-sm space-y-2">
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-blue-600 dark:text-blue-400">1.</span>
-                  <span>Select a troop type from above</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-blue-600 dark:text-blue-400">2.</span>
-                  <span><strong>Click anywhere</strong> on the green map to deploy</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-blue-600 dark:text-blue-400">3.</span>
-                  <span>Troops will automatically move and attack!</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="font-bold text-blue-600 dark:text-blue-400">4.</span>
-                  <span>Destroy 50%+ of buildings to win!</span>
-                </li>
-              </ul>
-              {selectedTroopType && (
-                <div className="mt-3 p-2 bg-blue-100 dark:bg-blue-900 rounded text-xs font-semibold text-center">
-                  🎯 {selectedTroopType} selected - Click the map!
-                </div>
-              )}
-            </Card>
-          </div>
-
-          {/* Right Column - Battle Map (2 columns wide) */}
-          <div className="lg:col-span-2">
-            <Card className="p-4">
-              <div className="flex justify-center">
-                <div
-                  ref={canvasRef}
-                  className={`border-4 border-slate-700 rounded shadow-2xl ${selectedTroopType && isConnected ? 'cursor-crosshair' : 'cursor-wait'}`}
-                  style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT }}
-                  title={selectedTroopType ? `Click to deploy ${selectedTroopType}` : 'Select a troop first'}
-                />
-              </div>
-            </Card>
-          </div>
-        </div>
+    <div className="relative min-h-screen bg-black overflow-hidden">
+      {/* Full-screen canvas */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div
+          ref={canvasRef}
+          className={`${selectedTroopType && isConnected ? 'cursor-crosshair' : ''}`}
+          style={{
+            width: CANVAS_WIDTH,
+            height: CANVAS_HEIGHT,
+            boxShadow: '0 0 100px rgba(0,0,0,0.8)'
+          }}
+        />
       </div>
+
+      {/* Floating UI Elements */}
+
+      {/* Top Left - Back Button */}
+      <motion.div
+        initial={{ opacity: 0, x: -50 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="fixed top-6 left-6 z-50"
+      >
+        <Button
+          onClick={() => router.push('/village')}
+          className="bg-gray-900/90 backdrop-blur-xl border border-amber-500/30 hover:border-amber-500 text-white hover:bg-gray-800/90 transition-all duration-300 shadow-lg hover:shadow-amber-500/20"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Exit Battle
+        </Button>
+      </motion.div>
+
+      {/* Top Center - Battle Info Panel */}
+      <motion.div
+        initial={{ opacity: 0, y: -50 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="fixed top-6 left-1/2 transform -translate-x-1/2 z-50"
+      >
+        <div className="bg-gradient-to-br from-gray-900/95 to-black/95 backdrop-blur-xl rounded-2xl border border-amber-500/30 shadow-2xl p-4 min-w-[600px]">
+          <div className="flex items-center justify-between gap-6">
+            {/* Timer */}
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-500/20 p-3 rounded-xl border border-blue-500/30">
+                <Clock className={`w-6 h-6 ${timeRemaining < 30 ? 'text-red-500 animate-pulse' : 'text-blue-400'}`} />
+              </div>
+              <div>
+                <div className="text-xs text-gray-400 uppercase tracking-wide">Time</div>
+                <div className={`text-2xl font-bold font-mono ${timeRemaining < 30 ? 'text-red-500' : 'text-white'}`}>
+                  {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
+                </div>
+              </div>
+            </div>
+
+            {/* Destruction */}
+            <div className="flex items-center gap-3">
+              <div className="bg-red-500/20 p-3 rounded-xl border border-red-500/30">
+                <Flame className="w-6 h-6 text-red-400" />
+              </div>
+              <div>
+                <div className="text-xs text-gray-400 uppercase tracking-wide">Destruction</div>
+                <div className="text-2xl font-bold text-white">{destructionPercentage}%</div>
+              </div>
+            </div>
+
+            {/* Stars */}
+            <div className="flex items-center gap-3">
+              <div className="bg-yellow-500/20 p-3 rounded-xl border border-yellow-500/30">
+                <Trophy className="w-6 h-6 text-yellow-400" />
+              </div>
+              <div>
+                <div className="text-xs text-gray-400 uppercase tracking-wide">Stars</div>
+                <div className="flex gap-1">
+                  {[1, 2, 3].map((star) => (
+                    <Star
+                      key={star}
+                      className={`w-6 h-6 ${star <= stars ? 'text-yellow-400 fill-yellow-400' : 'text-gray-600'}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Connection Status */}
+            <div className="flex items-center gap-2 ml-4">
+              <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+              <span className="text-sm text-gray-300">{isConnected ? 'Connected' : 'Connecting...'}</span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Bottom - Horizontal Troop Selector */}
+      <motion.div
+        initial={{ opacity: 0, y: 100 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50"
+      >
+        <div className="bg-gradient-to-br from-gray-900/95 to-black/95 backdrop-blur-xl rounded-2xl border border-amber-500/30 shadow-2xl p-4">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 mr-2">
+              <Swords className="w-5 h-5 text-amber-400" />
+              <span className="text-sm font-bold text-amber-400 uppercase tracking-wide">Deploy Troops</span>
+            </div>
+
+            {troops.map((troop: any, index: number) => {
+              const deployed = deployedCounts[troop.type] || 0;
+              const remaining = troop.count - deployed;
+              const isSelected = selectedTroopType === troop.type;
+
+              return (
+                <motion.button
+                  key={troop.type}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.1 }}
+                  onClick={() => {
+                    setSelectedTroopType(troop.type);
+                    setBattleStatus(`${troop.type} selected! Click on the map to deploy.`);
+                  }}
+                  disabled={remaining === 0}
+                  className={`
+                    relative group
+                    ${isSelected
+                      ? 'bg-gradient-to-br from-amber-500 to-orange-600 border-amber-400 scale-110'
+                      : 'bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700 hover:border-amber-500/50'
+                    }
+                    ${remaining === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}
+                    border-2 rounded-xl p-4 min-w-[120px]
+                    transition-all duration-300 shadow-lg
+                    ${isSelected ? 'shadow-amber-500/50' : 'hover:shadow-amber-500/20'}
+                  `}
+                >
+                  {/* Shimmer effect */}
+                  {isSelected && (
+                    <div className="absolute inset-0 overflow-hidden rounded-xl">
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"
+                           style={{ transform: 'translateX(-100%)' }} />
+                    </div>
+                  )}
+
+                  {/* Troop Icon */}
+                  <div className="text-4xl mb-2">{getTroopIcon(troop.type)}</div>
+
+                  {/* Troop Name */}
+                  <div className={`text-sm font-bold mb-1 ${isSelected ? 'text-white' : 'text-gray-300'}`}>
+                    {troop.type}
+                  </div>
+
+                  {/* Count */}
+                  <div className={`text-lg font-mono font-bold ${remaining === 0 ? 'text-red-400' : isSelected ? 'text-white' : 'text-amber-400'}`}>
+                    {remaining}/{troop.count}
+                  </div>
+
+                  {/* Selected indicator */}
+                  {isSelected && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute -top-2 -right-2 bg-green-500 rounded-full p-1"
+                    >
+                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </motion.div>
+                  )}
+                </motion.button>
+              );
+            })}
+          </div>
+
+          {/* Status Message */}
+          <AnimatePresence>
+            {battleStatus && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mt-4 pt-4 border-t border-gray-700"
+              >
+                <p className="text-sm text-center text-gray-300">
+                  {battleStatus}
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </motion.div>
 
       {/* Battle Summary Modal */}
       {battleEndResult && (
         <BattleSummary
           battleResult={battleEndResult}
-          onReturnToVillage={() => {
-            router.push('/village');
-          }}
+          onReturnToVillage={() => router.push('/village')}
         />
       )}
+
+      {/* CSS for animations */}
+      <style jsx>{`
+        @keyframes shimmer {
+          0% {
+            transform: translateX(-100%);
+          }
+          100% {
+            transform: translateX(100%);
+          }
+        }
+        .animate-shimmer {
+          animation: shimmer 2s infinite;
+        }
+      `}</style>
     </div>
   );
 }
