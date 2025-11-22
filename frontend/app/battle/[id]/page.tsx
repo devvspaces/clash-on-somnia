@@ -128,7 +128,7 @@ export default function BattlePage() {
 
   // Initialize Pixi.js canvas
   useEffect(() => {
-    if (!canvasRef.current || appRef.current || !battleSession) return;
+    if (!canvasRef.current || appRef.current || !battleSession || !spritesLoaded) return;
 
     const initPixi = () => {
       // Pixi.js v7 syntax
@@ -179,7 +179,7 @@ export default function BattlePage() {
         appRef.current = null;
       }
     };
-  }, [battleSession]);
+  }, [battleSession, spritesLoaded]);
 
   // Draw grid
   const drawGrid = (stage: Container) => {
