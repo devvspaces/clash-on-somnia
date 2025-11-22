@@ -267,13 +267,16 @@ export default function BattlePage() {
         buildingContainer.addChild(sprite);
       }
 
-      const label = new Text(building.type.replace(/_/g, ' '), {
-        fontSize: 8,
-        fill: 0xffffff,
-      });
-      label.position.set(buildingWidth / 2, buildingHeight / 2);
-      label.anchor.set(0.5);
-      buildingContainer.addChild(label);
+      // Only add labels to non-wall buildings
+      if (building.type.toLowerCase() !== 'wall') {
+        const label = new Text(building.type.replace(/_/g, ' '), {
+          fontSize: 8,
+          fill: 0xffffff,
+        });
+        label.position.set(buildingWidth / 2, buildingHeight / 2);
+        label.anchor.set(0.5);
+        buildingContainer.addChild(label);
+      }
 
       buildingContainer.position.set(building.position.x * TILE_SIZE, building.position.y * TILE_SIZE);
       layer.addChild(buildingContainer);
@@ -303,7 +306,7 @@ export default function BattlePage() {
       case 'ARMY_CAMP': return 0x3498db;
       case 'CANNON': return 0x95a5a6;
       case 'ARCHER_TOWER': return 0x34495e;
-      case 'WALL': return 0x7f8c8d;
+      case 'WALL': return 0x8B4513; // Saddle brown - matches village mode
       default: return 0xbdc3c7;
     }
   };
