@@ -942,15 +942,15 @@ export class BattlesService {
       return null;
     }
 
-    // Get battle record
-    const battle = await this.getBattleById(session.battleId);
+    // Get battle record (session.id is the battle ID)
+    const battle = await this.getBattleById(session.id);
     if (!battle || battle.status !== 'active') {
-      console.log(`Battle ${session.battleId} not found or not active`);
+      console.log(`Battle ${session.id} not found or not active`);
       return null;
     }
 
     return {
-      battleId: session.battleId,
+      battleId: session.id,
       session: {
         id: session.id,
         status: session.status,
