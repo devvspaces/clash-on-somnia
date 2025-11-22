@@ -45,6 +45,7 @@ export function WarRoomModal({ isOpen, onClose }: WarRoomModalProps) {
   const router = useRouter();
   const { user, token } = useAuthStore();
   const { toast } = useToast();
+  const { setBattleSession } = useBattleStore();
 
   const [activeTab, setActiveTab] = useState('active');
   const [attacks, setAttacks] = useState<BattleResult[]>([]);
@@ -320,8 +321,6 @@ export function WarRoomModal({ isOpen, onClose }: WarRoomModalProps) {
   };
 
   const renderMyActiveBattleCard = (battle: PublicBattle) => {
-    const { setBattleSession } = useBattleStore();
-
     const handleRejoin = async () => {
       try {
         // Fetch the full battle session to rejoin
