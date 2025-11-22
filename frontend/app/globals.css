@@ -1,4 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;500;700;900&display=swap');
+@font-face {
+  font-family: 'KnightWarrior';
+  src: url('/assets/fonts/KnightWarrior-w16n8.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
 
 @tailwind base;
 @tailwind components;
@@ -58,21 +63,21 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Orbitron', sans-serif;
+    font-family: 'KnightWarrior', sans-serif;
     font-feature-settings: 'rlig' 1, 'calt' 1;
   }
 
   /* Gaming font for numbers */
   .font-numbers {
-    font-family: 'Orbitron', monospace;
-    font-weight: 700;
+    font-family: 'KnightWarrior', monospace;
+    font-weight: normal;
     font-variant-numeric: tabular-nums;
   }
 
   /* Gaming font for headers */
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Orbitron', sans-serif;
-    font-weight: 700;
+    font-family: 'KnightWarrior', sans-serif;
+    font-weight: normal;
   }
 }
 

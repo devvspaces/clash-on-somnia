@@ -162,81 +162,78 @@ export function ArmyTraining({ onClose }: ArmyTrainingProps) {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Left Column */}
-        <div className="space-y-4">
-          {/* Training Queue */}
-          {trainingQueue.length > 0 && (
-            <Card className="bg-gray-800/90 border-2 border-blue-600/50">
-              <CardHeader>
-                <CardTitle className="text-lg text-blue-300">Training Queue ({trainingQueue.length})</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <AnimatePresence>
-                  {trainingQueue.map((item) => (
-                    <motion.div
-                      key={item.id}
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className="flex items-center gap-3 p-3 bg-gray-900/50 border-2 border-gray-700 rounded-lg hover:border-blue-500/50 transition-colors"
-                    >
-                      <span className="text-3xl">{item.troopConfig.icon}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-base text-white">{item.troopConfig.name}</h3>
-                          <Badge variant="secondary" className="text-xs bg-blue-600 text-white">#{item.queuePosition + 1}</Badge>
-                        </div>
-                        <div className="mt-1 space-y-1">
-                          <Progress value={calculateProgress(item)} className="h-2 bg-gray-700" />
-                          <p className="text-xs text-gray-400 font-numbers">
-                            {getTimeRemaining(item.completesAt)} remaining
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleCancelTraining(item.id)}
-                        className="bg-red-600 hover:bg-red-700"
-                      >
-                        Cancel
-                      </Button>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Current Army */}
-          <Card className="bg-gray-800/90 border-2 border-green-600/50">
+      <div className="space-y-4">
+        {/* Training Queue */}
+        {trainingQueue.length > 0 && (
+          <Card className="bg-gray-800/90 border-2 border-blue-600/50">
             <CardHeader>
-              <CardTitle className="text-lg text-green-300">Your Army</CardTitle>
+              <CardTitle className="text-lg text-blue-300">Training Queue ({trainingQueue.length})</CardTitle>
             </CardHeader>
-            <CardContent>
-              {army.length === 0 ? (
-                <p className="text-center text-base text-gray-400 py-6">
-                  No troops trained yet
-                </p>
-              ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  {army.map((troop) => (
-                    <div key={troop.id} className="flex items-center gap-3 p-3 bg-gray-900/50 border-2 border-gray-700 rounded-lg hover:border-green-500/50 transition-colors">
-                      <span className="text-3xl">{troop.troopConfig.icon}</span>
-                      <div className="min-w-0">
-                        <p className="font-semibold text-sm text-white truncate">{troop.troopConfig.name}</p>
-                        <p className="text-xl font-bold text-green-400 font-numbers">{troop.count}x</p>
+            <CardContent className="space-y-2">
+              <AnimatePresence>
+                {trainingQueue.map((item) => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="flex items-center gap-3 p-3 bg-gray-900/50 border-2 border-gray-700 rounded-lg hover:border-blue-500/50 transition-colors"
+                  >
+                    <span className="text-3xl">{item.troopConfig.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-base text-white">{item.troopConfig.name}</h3>
+                        <Badge variant="secondary" className="text-xs bg-blue-600 text-white">#{item.queuePosition + 1}</Badge>
+                      </div>
+                      <div className="mt-1 space-y-1">
+                        <Progress value={calculateProgress(item)} className="h-2 bg-gray-700" />
+                        <p className="text-xs text-gray-400 font-numbers">
+                          {getTimeRemaining(item.completesAt)} remaining
+                        </p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleCancelTraining(item.id)}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      Cancel
+                    </Button>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </CardContent>
           </Card>
-        </div>
+        )}
 
-        {/* Right Column - Train Troops */}
+        {/* Your Army */}
+        <Card className="bg-gray-800/90 border-2 border-green-600/50">
+          <CardHeader>
+            <CardTitle className="text-lg text-green-300">Your Army</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {army.length === 0 ? (
+              <p className="text-center text-base text-gray-400 py-6">
+                No troops trained yet
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {army.map((troop) => (
+                  <div key={troop.id} className="flex items-center gap-3 p-3 bg-gray-900/50 border-2 border-gray-700 rounded-lg hover:border-green-500/50 transition-colors">
+                    <span className="text-3xl">{troop.troopConfig.icon}</span>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm text-white truncate">{troop.troopConfig.name}</p>
+                      <p className="text-xl font-bold text-green-400 font-numbers">{troop.count}x</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Train Troops */}
         <Card className="bg-gray-800/90 border-2 border-purple-600/50">
           <CardHeader>
             <CardTitle className="text-lg text-purple-300">Train Troops</CardTitle>
