@@ -10,6 +10,7 @@ import { ArmyTraining } from '@/components/game/ArmyTraining';
 import { BattlePreparation } from '@/components/game/BattlePreparation';
 import { BattleResult } from '@/components/game/BattleResult';
 import { WarRoomModal } from '@/components/WarRoomModal';
+import { MusicControls } from '@/components/ui/MusicControls';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SlidePanel } from '@/components/ui/slide-panel';
@@ -543,6 +544,9 @@ export default function VillagePage() {
           onCancel={() => setShowBattlePrep(false)}
         />
       </SlidePanel>
+
+      {/* Music Controls */}
+      <MusicControls />
     </div>
   );
 }
