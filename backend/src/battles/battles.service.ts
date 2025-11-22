@@ -803,4 +803,91 @@ export class BattlesService {
       console.log(`Deducted ${troopGroup.count} ${troopGroup.type} from village ${villageId}`);
     }
   }
+
+  /**
+   * Get active battles for a user (ongoing battles they can rejoin)
+   */
+  async getActiveBattlesForUser(villageId: string) {
+    const activeBattles = await this.db
+      .select({
+        id: battles.id,
+        attackerId: battles.attackerId,
+        defenderId: battles.defenderId,
+        attackerTroops: battles.attackerTroops,
+        destructionPercentage: battles.destructionPercentage,
+        stars: battles.stars,
+        lootGold: battles.lootGold,
+        lootElixir: battles.lootElixir,
+        status: battles.status,
+        createdAt: battles.createdAt,
+        attackerVillage: {
+          id: villages.id,
+          name: villages.name,
+        },
+      })
+      .from(battles)
+      .leftJoin(villages, eq(battles.attackerId, villages.id))
+      .where(
+        and(
+          eq(battles.attackerId, villageId),
+          eq(battles.status, 'active'),
+        ),
+      )
+      .orderBy(desc(battles.createdAt))
+      .limit(20);
+
+    // Get defender village names for each battle
+    const battlesWithDefender = await Promise.all(
+      activeBattles.map(async (battle) => {
+        const [defenderVillage] = await this.db
+          .select({ id: villages.id, name: villages.name })
+          .from(villages)
+          .where(eq(villages.id, battle.defenderId))
+          .limit(1);
+
+        return {
+          ...battle,
+          defenderVillage: defenderVillage || { id: battle.defenderId, name: 'Unknown' },
+        };
+      }),
+    );
+
+    return battlesWithDefender;
+  }
+
+  /**
+   * Get battle session by session ID for rejoining
+   */
+  async getBattleSessionById(sessionId: string, userId: string) {
+    // Get the battle session from the session manager
+    const session = this.battleSessionManager.getSession(sessionId);
+
+    if (!session) {
+      console.log(`Session ${sessionId} not found in manager`);
+      return null;
+    }
+
+    // Verify user owns this battle
+    if (session.attackerId !== userId) {
+      console.log(`User ${userId} does not own session ${sessionId}`);
+      return null;
+    }
+
+    // Get battle record
+    const battle = await this.getBattleById(session.battleId);
+    if (!battle || battle.status !== 'active') {
+      console.log(`Battle ${session.battleId} not found or not active`);
+      return null;
+    }
+
+    return {
+      battleId: session.battleId,
+      session: {
+        id: session.id,
+        status: session.status,
+        buildings: session.buildings,
+        maxTroops: session.maxTroops,
+      },
+    };
+  }
 }
