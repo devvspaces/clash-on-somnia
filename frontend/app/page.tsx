@@ -394,120 +394,183 @@ export default function Home() {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {displayBattles.map((battle, index) => {
-                  const isLive = battle.status === 'active';
-                  const totalTroops = battle.attackerTroops.reduce((sum, t) => sum + t.count, 0);
+              <div className="overflow-x-auto">
+                <div className="inline-block min-w-full align-middle">
+                  <div className="overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 to-white/0 backdrop-blur-sm">
+                    <table className="min-w-full divide-y divide-white/10">
+                      <thead className="bg-white/5">
+                        <tr>
+                          <th
+                            scope="col"
+                            className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider"
+                            style={{ letterSpacing: '0.1em' }}
+                          >
+                            Status
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider"
+                            style={{ letterSpacing: '0.1em' }}
+                          >
+                            Attacker
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider"
+                            style={{ letterSpacing: '0.1em' }}
+                          >
+                            VS
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider"
+                            style={{ letterSpacing: '0.1em' }}
+                          >
+                            Defender
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider"
+                            style={{ letterSpacing: '0.1em' }}
+                          >
+                            Results
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider"
+                            style={{ letterSpacing: '0.1em' }}
+                          >
+                            Time
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase tracking-wider"
+                            style={{ letterSpacing: '0.1em' }}
+                          >
+                            Action
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {displayBattles.map((battle, index) => {
+                          const isLive = battle.status === 'active';
+                          const totalTroops = battle.attackerTroops.reduce((sum, t) => sum + t.count, 0);
 
-                  return (
-                    <div
-                      key={battle.id}
-                      className={`group relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/5 to-white/0 hover:from-white/10 hover:to-white/5 backdrop-blur-sm border transition-all duration-500 hover:scale-105 hover:shadow-2xl animate-fade-in-up ${
-                        isLive
-                          ? 'border-red-500/30 hover:border-red-500/60 shadow-red-500/20'
-                          : 'border-white/10 hover:border-white/30 shadow-purple-500/20'
-                      }`}
-                      style={{ animationDelay: `${index * 0.1}s` }}
-                    >
-                      {/* Live Indicator Glow */}
-                      {isLive && (
-                        <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-orange-500/10 animate-pulse-glow" />
-                      )}
-
-                      <div className="relative p-6">
-                        {/* Header */}
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-2">
-                            {isLive ? (
-                              <>
-                                <span className="relative flex h-3 w-3">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600"></span>
-                                </span>
-                                <span className="text-xs font-bold text-red-400 uppercase tracking-wider">
-                                  LIVE
-                                </span>
-                              </>
-                            ) : (
-                              <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Replay
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                            <Clock className="w-3 h-3" />
-                            {formatDistanceToNow(new Date(battle.createdAt), {
-                              addSuffix: true,
-                            })}
-                          </div>
-                        </div>
-
-                        {/* Battle Matchup */}
-                        <div className="mb-6">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex-1 text-right">
-                              <div className="text-lg font-bold text-white truncate mb-1">
-                                {battle.attackerVillage.name}
-                              </div>
-                              <div className="text-sm text-amber-400 font-numbers">
-                                {totalTroops} troops
-                              </div>
-                            </div>
-
-                            <div className="mx-4 px-3 py-1 rounded-lg bg-gradient-to-r from-red-500/20 to-blue-500/20 border border-white/10">
-                              <span className="text-xl font-bold bg-gradient-to-r from-red-400 to-blue-400 bg-clip-text text-transparent">
-                                VS
-                              </span>
-                            </div>
-
-                            <div className="flex-1">
-                              <div className="text-lg font-bold text-white truncate mb-1">
-                                {battle.defenderVillage.name}
-                              </div>
-                              <div className="text-sm text-blue-400">Defender</div>
-                            </div>
-                          </div>
-
-                          {/* Results for completed */}
-                          {!isLive && (
-                            <div className="pt-3 border-t border-white/10">
-                              <div className="flex items-center justify-between text-sm">
+                          return (
+                            <tr
+                              key={battle.id}
+                              className={`group transition-all duration-300 hover:bg-white/5 animate-fade-in-up ${
+                                isLive ? 'bg-red-500/5' : ''
+                              }`}
+                              style={{ animationDelay: `${index * 0.05}s` }}
+                            >
+                              {/* Status */}
+                              <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="flex items-center gap-2">
-                                  <Trophy className="w-4 h-4 text-yellow-400" />
-                                  <span className="text-gray-400">
-                                    {battle.stars} ⭐ • {battle.destructionPercentage}%
-                                  </span>
+                                  {isLive ? (
+                                    <>
+                                      <span className="relative flex h-3 w-3">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600"></span>
+                                      </span>
+                                      <span className="text-xs font-bold text-red-400 uppercase tracking-wider">
+                                        LIVE
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                      Replay
+                                    </span>
+                                  )}
                                 </div>
-                                <div className="flex gap-2">
-                                  <span className="text-yellow-500 font-numbers">
-                                    🪙 {battle.lootGold.toLocaleString()}
-                                  </span>
-                                  <span className="text-purple-500 font-numbers">
-                                    💜 {battle.lootElixir.toLocaleString()}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                              </td>
 
-                        {/* Action Button */}
-                        <button
-                          onClick={() => router.push(`/battle/${battle.id}/spectate`)}
-                          className={`w-full py-3 px-4 rounded-xl font-bold transition-all duration-300 hover:scale-105 flex items-center justify-center gap-2 ${
-                            isLive
-                              ? 'bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white shadow-lg shadow-red-500/50'
-                              : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
-                          }`}
-                          style={{ letterSpacing: '0.05em' }}
-                        >
-                          <Eye className="w-5 h-5" />
-                          {isLive ? 'WATCH LIVE' : 'VIEW REPLAY'}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+                              {/* Attacker */}
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div>
+                                  <div className="text-sm font-bold text-white">
+                                    {battle.attackerVillage.name}
+                                  </div>
+                                  <div className="text-xs text-amber-400 font-numbers">
+                                    {totalTroops} troops
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* VS */}
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <div className="inline-flex px-3 py-1 rounded-lg bg-gradient-to-r from-red-500/20 to-blue-500/20 border border-white/10">
+                                  <span className="text-sm font-bold bg-gradient-to-r from-red-400 to-blue-400 bg-clip-text text-transparent">
+                                    VS
+                                  </span>
+                                </div>
+                              </td>
+
+                              {/* Defender */}
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div>
+                                  <div className="text-sm font-bold text-white">
+                                    {battle.defenderVillage.name}
+                                  </div>
+                                  <div className="text-xs text-blue-400">Defender</div>
+                                </div>
+                              </td>
+
+                              {/* Results */}
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                {!isLive ? (
+                                  <div className="flex items-center gap-3 text-sm">
+                                    <div className="flex items-center gap-1">
+                                      <Trophy className="w-3 h-3 text-yellow-400" />
+                                      <span className="text-gray-400">{battle.stars}⭐</span>
+                                    </div>
+                                    <span className="text-gray-400">{battle.destructionPercentage}%</span>
+                                    <div className="flex gap-2">
+                                      <span className="text-yellow-500 font-numbers text-xs">
+                                        🪙 {battle.lootGold.toLocaleString()}
+                                      </span>
+                                      <span className="text-purple-500 font-numbers text-xs">
+                                        💜 {battle.lootElixir.toLocaleString()}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-500 text-sm">In Progress...</span>
+                                )}
+                              </td>
+
+                              {/* Time */}
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                                  <Clock className="w-3 h-3" />
+                                  {formatDistanceToNow(new Date(battle.createdAt), {
+                                    addSuffix: true,
+                                  })}
+                                </div>
+                              </td>
+
+                              {/* Action */}
+                              <td className="px-6 py-4 whitespace-nowrap text-right">
+                                <button
+                                  onClick={() => router.push(`/battle/${battle.id}/spectate`)}
+                                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all duration-300 hover:scale-105 ${
+                                    isLive
+                                      ? 'bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white shadow-lg shadow-red-500/50'
+                                      : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
+                                  }`}
+                                  style={{ letterSpacing: '0.05em' }}
+                                >
+                                  <Eye className="w-4 h-4" />
+                                  {isLive ? 'WATCH' : 'REPLAY'}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             )}
           </div>
