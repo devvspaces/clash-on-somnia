@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore, useVillageStore } from '@/lib/stores';
+import { useFloatingNumberStore } from '@/lib/stores/useFloatingNumberStore';
 import { VillageCanvasPlacement } from '@/components/game/VillageCanvasPlacement';
 import { BuildingShop } from '@/components/game/BuildingShop';
 import { ArmyTraining } from '@/components/game/ArmyTraining';
@@ -13,6 +14,9 @@ import { MusicControls } from '@/components/ui/MusicControls';
 import { FloatingResourceBar } from '@/components/game/FloatingResourceBar';
 import { FloatingActionButtons } from '@/components/game/FloatingActionButtons';
 import { FloatingBuildingInfo } from '@/components/game/FloatingBuildingInfo';
+import { UserProfile } from '@/components/game/UserProfile';
+import { ToastContainer } from '@/components/ui/ToastContainer';
+import { FloatingNumbersContainer } from '@/components/ui/FloatingNumber';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SlidePanel } from '@/components/ui/slide-panel';
@@ -26,6 +30,7 @@ export default function VillagePage() {
   const router = useRouter();
   const { isAuthenticated, isLoading: authLoading, loadUser } = useAuthStore();
   const { village, isLoading: villageLoading, fetchVillage, silentRefresh, updateResources, addBuilding } = useVillageStore();
+  const { numbers, removeNumber } = useFloatingNumberStore();
   const [resources, setResources] = useState<ResourcesWithPending | null>(null);
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
   const [isLoadingResources, setIsLoadingResources] = useState(false);
@@ -33,6 +38,7 @@ export default function VillagePage() {
   const [showArmyTraining, setShowArmyTraining] = useState(false);
   const [showBattlePrep, setShowBattlePrep] = useState(false);
   const [showWarRoom, setShowWarRoom] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [battleResult, setBattleResult] = useState<any>(null);
   const [placementMode, setPlacementMode] = useState<{
     active: boolean;
@@ -218,6 +224,7 @@ export default function VillagePage() {
             villageName={village.name}
             resources={resources}
             isLoading={isLoadingResources}
+            onProfileClick={() => setShowProfile(true)}
           />
 
           {/* Action Buttons */}
@@ -295,6 +302,15 @@ export default function VillagePage() {
 
       {/* Music Controls */}
       <MusicControls />
+
+      {/* User Profile */}
+      <UserProfile isOpen={showProfile} onClose={() => setShowProfile(false)} />
+
+      {/* Toast Notifications */}
+      <ToastContainer />
+
+      {/* Floating Numbers */}
+      <FloatingNumbersContainer numbers={numbers} onRemove={removeNumber} />
     </div>
   );
 }

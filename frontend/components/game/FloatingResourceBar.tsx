@@ -1,18 +1,20 @@
 'use client';
 
-import { Coins, Droplet, Users, LogOut } from 'lucide-react';
+import { Coins, Droplet, Users, LogOut, User } from 'lucide-react';
 import { ResourcesWithPending } from '@/lib/api';
 import { useAuthStore } from '@/lib/stores';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { AnimatedCounter } from '@/components/ui/AnimatedCounter';
 
 interface FloatingResourceBarProps {
   villageName: string;
   resources: ResourcesWithPending | null;
   isLoading: boolean;
+  onProfileClick?: () => void;
 }
 
-export function FloatingResourceBar({ villageName, resources, isLoading }: FloatingResourceBarProps) {
+export function FloatingResourceBar({ villageName, resources, isLoading, onProfileClick }: FloatingResourceBarProps) {
   const router = useRouter();
   const { logout } = useAuthStore();
 
@@ -48,9 +50,12 @@ export function FloatingResourceBar({ villageName, resources, isLoading }: Float
               </div>
               <div className="flex flex-col">
                 <span className="text-xs text-gray-400">Gold</span>
-                <span className="font-bold text-yellow-400 font-numbers">
-                  {formatNumber(resources.gold)}
-                </span>
+                <AnimatedCounter
+                  value={resources.gold}
+                  className="font-bold text-yellow-400 font-numbers"
+                  formatValue={formatNumber}
+                  showChangeIndicator={false}
+                />
               </div>
             </div>
 
@@ -61,9 +66,12 @@ export function FloatingResourceBar({ villageName, resources, isLoading }: Float
               </div>
               <div className="flex flex-col">
                 <span className="text-xs text-gray-400">Elixir</span>
-                <span className="font-bold text-purple-400 font-numbers">
-                  {formatNumber(resources.elixir)}
-                </span>
+                <AnimatedCounter
+                  value={resources.elixir}
+                  className="font-bold text-purple-400 font-numbers"
+                  formatValue={formatNumber}
+                  showChangeIndicator={false}
+                />
               </div>
             </div>
 
@@ -75,9 +83,11 @@ export function FloatingResourceBar({ villageName, resources, isLoading }: Float
                 </div>
                 <div className="flex flex-col">
                   <span className="text-xs text-gray-400">Troops</span>
-                  <span className="font-bold text-blue-400 font-numbers">
-                    {resources.troops}
-                  </span>
+                  <AnimatedCounter
+                    value={resources.troops}
+                    className="font-bold text-blue-400 font-numbers"
+                    showChangeIndicator={false}
+                  />
                 </div>
               </div>
             )}
@@ -89,8 +99,19 @@ export function FloatingResourceBar({ villageName, resources, isLoading }: Float
           </div>
         )}
 
-        {/* Logout Button */}
-        <div className="border-l border-gray-700 pl-4">
+        {/* Profile & Logout Buttons */}
+        <div className="border-l border-gray-700 pl-4 flex gap-2">
+          {onProfileClick && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onProfileClick}
+              className="text-white hover:bg-white/20 hover:text-amber-400"
+            >
+              <User className="h-4 w-4 mr-2" />
+              Profile
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"

@@ -12,6 +12,7 @@ interface AuthState {
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   loadUser: () => Promise<void>;
+  updateUsername: (username: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -110,6 +111,17 @@ export const useAuthStore = create<AuthState>((set) => ({
         isAuthenticated: false,
         isLoading: false,
       });
+    }
+  },
+
+  updateUsername: async (username: string) => {
+    try {
+      const updatedUser = await authApi.updateUsername(username);
+      set((state) => ({
+        user: state.user ? { ...state.user, username: updatedUser.username } : null,
+      }));
+    } catch (error: any) {
+      throw error;
     }
   },
 
