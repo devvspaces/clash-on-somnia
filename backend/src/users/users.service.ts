@@ -43,4 +43,13 @@ export class UsersService {
       .limit(1);
     return user || null;
   }
+
+  async updateUsername(userId: string, newUsername: string): Promise<User> {
+    const [updatedUser] = await this.db
+      .update(users)
+      .set({ username: newUsername })
+      .where(eq(users.id, userId))
+      .returning();
+    return updatedUser;
+  }
 }

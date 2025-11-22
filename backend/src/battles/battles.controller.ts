@@ -10,6 +10,7 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { BattlesService } from './battles.service';
 import { TroopType } from '../common/config/troops.config';
@@ -18,6 +19,16 @@ import { AttackDto } from './dto/attack.dto';
 @Controller('battles')
 export class BattlesController {
   constructor(private readonly battlesService: BattlesService) {}
+
+  /**
+   * Cleanup stale battles every 5 minutes
+   * Marks battles as 'completed' if their session no longer exists
+   */
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async handleStaleBattleCleanup() {
+    console.log('Running stale battle cleanup...');
+    await this.battlesService.cleanupStaleBattles();
+  }
 
   /**
    * GET /battles/public/recent
@@ -192,6 +203,56 @@ export class BattlesController {
         createdAt: battle.createdAt,
       })),
     };
+  }
+
+  /**
+   * GET /battles/active
+   * Get user's active/ongoing battles they can rejoin
+   */
+  @Get('active')
+  @UseGuards(JwtAuthGuard)
+  async getActiveBattles(@Request() req) {
+    const villageId = req.user.villageId;
+
+    if (!villageId) {
+      throw new BadRequestException('Village ID not found in user session');
+    }
+
+    const activeBattles = await this.battlesService.getActiveBattlesForUser(villageId);
+
+    return {
+      battles: activeBattles.map((battle) => ({
+        id: battle.id,
+        attackerVillage: battle.attackerVillage,
+        defenderVillage: battle.defenderVillage,
+        attackerTroops: battle.attackerTroops,
+        destructionPercentage: battle.destructionPercentage,
+        stars: battle.stars,
+        lootGold: battle.lootGold,
+        lootElixir: battle.lootElixir,
+        status: battle.status,
+        createdAt: battle.createdAt,
+      })),
+    };
+  }
+
+  /**
+   * GET /battles/session/:sessionId
+   * Get battle session details by session ID (for rejoining battles)
+   */
+  @Get('session/:sessionId')
+  @UseGuards(JwtAuthGuard)
+  async getBattleSession(@Request() req, @Param('sessionId') sessionId: string) {
+    const userId = req.user.userId;
+    const villageId = req.user.villageId;
+
+    const sessionData = await this.battlesService.getBattleSessionById(sessionId, userId);
+
+    if (!sessionData) {
+      throw new NotFoundException('Battle session not found or has ended');
+    }
+
+    return sessionData;
   }
 
   /**

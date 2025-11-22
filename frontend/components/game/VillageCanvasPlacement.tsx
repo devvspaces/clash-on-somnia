@@ -5,6 +5,9 @@ import * as PIXI from 'pixi.js';
 import { Building } from '@/lib/api';
 import { getBuildingVisual } from '@/lib/config/buildings';
 import { BuildingType, getBuildingConfig } from '@/lib/config/buildingsData';
+import { SpriteManager } from '@/lib/game/SpriteManager';
+import { getBuildingSprite, calculateSpriteScale, CRITICAL_ASSETS, LAZY_LOAD_ASSETS } from '@/lib/config/spriteAssets';
+import { DecorationManager, type Decoration } from '@/lib/game/DecorationManager';
 
 interface VillageCanvasPlacementProps {
   buildings: Building[];
@@ -18,9 +21,12 @@ interface VillageCanvasPlacementProps {
   };
 }
 
-const GRID_SIZE = 40;
+const GRID_WIDTH = 80; // 80 columns
+const GRID_HEIGHT = 40; // 40 rows (2:1 ratio)
 const TILE_SIZE = 15;
-const CANVAS_SIZE = GRID_SIZE * TILE_SIZE;
+const CANVAS_WIDTH = GRID_WIDTH * TILE_SIZE; // 1200px
+const CANVAS_HEIGHT = GRID_HEIGHT * TILE_SIZE; // 600px
+const BACKGROUND_IMAGE = '/assets/bg/map001.svg';
 
 export function VillageCanvasPlacement({
   buildings,
@@ -31,6 +37,7 @@ export function VillageCanvasPlacement({
   const canvasRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<PIXI.Application | null>(null);
   const buildingContainersRef = useRef<Map<string, PIXI.Container>>(new Map());
+  const decorationContainerRef = useRef<PIXI.Container | null>(null);
   const previewRef = useRef<PIXI.Graphics | null>(null);
   const suggestedPreviewRef = useRef<PIXI.Graphics | null>(null);
   const draggedBuildingRef = useRef<{ building: Building; startX: number; startY: number } | null>(null);
@@ -38,36 +45,88 @@ export function VillageCanvasPlacement({
   const wallPlacementHistoryRef = useRef<{x: number, y: number}[]>([]);
   const [selectedWalls, setSelectedWalls] = useState<Set<string>>(new Set());
   const selectionGraphicsRef = useRef<Map<string, PIXI.Graphics>>(new Map());
+  const [spritesLoaded, setSpritesLoaded] = useState(false);
+  const [decorations, setDecorations] = useState<Decoration[]>([]);
+
+  // Preload all sprites ONCE on mount
+  useEffect(() => {
+    const preloadSprites = async () => {
+      try {
+        console.log('🎨 Preloading sprite assets...');
+        await SpriteManager.preloadAssets(CRITICAL_ASSETS);
+        setSpritesLoaded(true);
+        console.log('✅ Sprites loaded successfully');
+
+        // Lazy load decoration assets in background
+        // DISABLED: Decoration assets not available yet
+        // console.log('🌳 Lazy loading decoration assets...');
+        // await SpriteManager.preloadAssets(LAZY_LOAD_ASSETS);
+        // console.log('✅ Decoration assets loaded');
+      } catch (error) {
+        console.error('❌ Error preloading sprites:', error);
+        // Fallback: use colored rectangles if sprites fail to load
+        setSpritesLoaded(true);
+      }
+    };
+
+    preloadSprites();
+  }, []);
+
+  // Generate decorations once buildings are available
+  // DISABLED: Decoration assets not available yet
+  // useEffect(() => {
+  //   if (buildings.length > 0 && decorations.length === 0) {
+  //     const generatedDecorations = DecorationManager.generateDecorations({
+  //       gridWidth: GRID_WIDTH,
+  //       gridHeight: GRID_HEIGHT,
+  //       density: 0.12, // 12% of tiles have decorations
+  //       seed: 42, // Consistent seed for same layout
+  //       buildings,
+  //       categories: ['tree', 'plant'], // Only trees and plants, no rocks
+  //     });
+  //     setDecorations(generatedDecorations);
+  //   }
+  // }, [buildings, decorations.length]);
 
   // Initialize Pixi app ONCE
   useEffect(() => {
     if (!canvasRef.current || appRef.current) return;
 
     const app = new PIXI.Application({
-      width: CANVAS_SIZE,
-      height: CANVAS_SIZE,
-      backgroundColor: 0x87ceeb,
+      width: CANVAS_WIDTH,
+      height: CANVAS_HEIGHT,
+      backgroundAlpha: 0, // Transparent background
       antialias: true,
     });
 
     appRef.current = app;
     canvasRef.current.appendChild(app.view as HTMLCanvasElement);
 
-    // Draw grid
+    // Draw grid lines with semi-transparent background
     const gridGraphics = new PIXI.Graphics();
-    gridGraphics.beginFill(0x228b22);
-    gridGraphics.drawRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+    // Add semi-transparent white background to differentiate play area
+    gridGraphics.beginFill(0xffffff, 0.1); // White with 10% opacity
+    gridGraphics.drawRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
     gridGraphics.endFill();
-    gridGraphics.lineStyle(1, 0x006400, 0.2);
-    for (let x = 0; x <= GRID_SIZE; x++) {
+
+    // Draw grid lines
+    gridGraphics.lineStyle(1, 0x000000, 0.3); // Black lines with 30% opacity
+
+    // Vertical lines
+    for (let x = 0; x <= GRID_WIDTH; x++) {
       gridGraphics.moveTo(x * TILE_SIZE, 0);
-      gridGraphics.lineTo(x * TILE_SIZE, CANVAS_SIZE);
+      gridGraphics.lineTo(x * TILE_SIZE, CANVAS_HEIGHT);
     }
-    for (let y = 0; y <= GRID_SIZE; y++) {
+
+    // Horizontal lines
+    for (let y = 0; y <= GRID_HEIGHT; y++) {
       gridGraphics.moveTo(0, y * TILE_SIZE);
-      gridGraphics.lineTo(CANVAS_SIZE, y * TILE_SIZE);
+      gridGraphics.lineTo(CANVAS_WIDTH, y * TILE_SIZE);
     }
-    app.stage.addChild(gridGraphics);
+
+    app.stage.addChildAt(gridGraphics, 0);
+    console.log('🗺️ Grid lines drawn');
 
     // Cleanup
     return () => {
@@ -75,6 +134,64 @@ export function VillageCanvasPlacement({
       appRef.current = null;
     };
   }, []);
+
+  // Render decorations on canvas
+  useEffect(() => {
+    const app = appRef.current;
+    if (!app || decorations.length === 0) return;
+
+    // Remove old decoration container if it exists
+    if (decorationContainerRef.current) {
+      app.stage.removeChild(decorationContainerRef.current);
+      decorationContainerRef.current.destroy({ children: true });
+    }
+
+    // Create new decoration container
+    const decorationContainer = new PIXI.Container();
+    decorationContainer.name = 'decorations';
+    decorationContainerRef.current = decorationContainer;
+
+    // Render each decoration
+    decorations.forEach(decoration => {
+      const texture = SpriteManager.getTextureSync(decoration.config.path);
+      if (!texture) {
+        // Decoration sprite not loaded yet, skip
+        return;
+      }
+
+      const sprite = new PIXI.Sprite(texture);
+      const x = decoration.positionX * TILE_SIZE;
+      const y = decoration.positionY * TILE_SIZE;
+
+      // Calculate scale to fit grid size
+      const targetSize = TILE_SIZE * decoration.config.gridSize;
+      const scale = Math.min(
+        targetSize / texture.width,
+        targetSize / texture.height
+      );
+
+      sprite.scale.set(scale, scale);
+      sprite.anchor.set(
+        decoration.config.anchor?.x || 0.5,
+        decoration.config.anchor?.y || 0.5
+      );
+
+      // Position sprite (center of occupied tiles)
+      sprite.x = x + (TILE_SIZE * decoration.config.gridSize) / 2;
+      sprite.y = y + (TILE_SIZE * decoration.config.gridSize) / 2;
+
+      // Add slight transparency for better blending
+      sprite.alpha = 0.85;
+
+      decorationContainer.addChild(sprite);
+    });
+
+    // Add decoration container to stage (after ground tiles, before buildings)
+    // Insert at index 2 (after grid at 0, ground tiles at 1)
+    app.stage.addChildAt(decorationContainer, 2);
+
+    console.log(`🎨 Rendered ${decorations.length} decorations on canvas`);
+  }, [decorations]);
 
   // Draw selection highlights for selected walls
   useEffect(() => {
@@ -114,7 +231,7 @@ export function VillageCanvasPlacement({
   // Draw/update buildings when they change
   useEffect(() => {
     const app = appRef.current;
-    if (!app) return;
+    if (!app || !spritesLoaded) return; // Wait for sprites to load before rendering buildings
 
     // Remove old building containers
     buildingContainersRef.current.forEach((container, id) => {
@@ -174,7 +291,7 @@ export function VillageCanvasPlacement({
         }
       }
     });
-  }, [buildings, onBuildingMove]); // Remove selectedWalls from dependencies
+  }, [buildings, onBuildingMove, spritesLoaded]); // Added spritesLoaded to wait for assets
 
   const handleBuildingClick = (clickedBuilding: Building, isShiftClick: boolean) => {
     console.log('[Wall Select] Clicked building:', clickedBuilding.type, 'isShift:', isShiftClick, 'currentSelection:', selectedWalls.size);
@@ -393,14 +510,17 @@ export function VillageCanvasPlacement({
   }, [placementMode, buildings]);
 
   return (
-    <div className="relative flex items-center justify-center rounded-lg border-4 border-amber-600 bg-green-800 p-4 shadow-2xl">
+    <div
+      className="relative flex h-full w-full items-center justify-center bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: `url(${BACKGROUND_IMAGE})` }}
+    >
       <div
         ref={canvasRef}
-        className="rounded-md shadow-lg"
+        className=""
         style={{ cursor: placementMode?.active ? 'crosshair' : 'default' }}
       />
       {placementMode?.active && (
-        <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-md bg-black/70 px-4 py-2 text-white">
+        <div className="absolute left-1/2 top-20 -translate-x-1/2 rounded-md bg-black/70 px-4 py-2 text-white shadow-xl">
           <p className="text-sm">
             {placementMode.buildingType === BuildingType.WALL
               ? 'Click to place walls • Cyan = suggested • Right-click or ESC to cancel'
@@ -447,43 +567,58 @@ function createBuildingContainer(
   shadow.endFill();
   container.addChild(shadow);
 
-  // Building rectangle
-  const buildingRect = new PIXI.Graphics();
-  buildingRect.beginFill(color);
-  buildingRect.lineStyle(2, 0x000000, 0.5);
-  buildingRect.drawRoundedRect(0, 0, width, height, 4);
-  buildingRect.endFill();
-  container.addChild(buildingRect);
+  // Building sprite or colored rectangle (walls use rectangles with blending)
+  let buildingSprite: PIXI.Sprite | null = null;
+  let buildingRect: PIXI.Graphics | null = null;
 
-  // Health bar
-  const healthBarBg = new PIXI.Graphics();
-  healthBarBg.beginFill(0x000000, 0.5);
-  healthBarBg.drawRect(2, height - 6, width - 4, 4);
-  healthBarBg.endFill();
-  container.addChild(healthBarBg);
+  const isWall = building.type === 'wall';
 
-  const healthPercentage = building.health / building.maxHealth;
-  const healthBarColor = healthPercentage > 0.5 ? 0x00ff00 : healthPercentage > 0.25 ? 0xffff00 : 0xff0000;
-  const healthBar = new PIXI.Graphics();
-  healthBar.beginFill(healthBarColor);
-  healthBar.drawRect(2, height - 6, (width - 4) * healthPercentage, 4);
-  healthBar.endFill();
-  container.addChild(healthBar);
+  if (isWall) {
+    // Walls are rendered as colored rectangles with seamless blending
+    buildingRect = new PIXI.Graphics();
+    buildingRect.beginFill(color);
+    buildingRect.lineStyle(0); // No border for seamless blending
+    buildingRect.drawRect(0, 0, width, height);
+    buildingRect.endFill();
+    container.addChild(buildingRect);
+  } else {
+    // Non-wall buildings use sprites
+    const spriteConfig = getBuildingSprite(building.type as BuildingType);
+    const texture = SpriteManager.getTextureSync(spriteConfig.path);
 
-  // Label (only shown on hover/selection)
-  const label = new PIXI.Text(visualConfig.name, {
-    fontFamily: 'Arial',
-    fontSize: 10,
-    fill: 0xffffff,
-    stroke: 0x000000,
-    strokeThickness: 2,
-    align: 'center',
-  });
-  label.anchor.set(0.5, 0);
-  label.x = width / 2;
-  label.y = -15;
-  label.visible = false; // Hidden by default
-  container.addChild(label);
+    if (texture) {
+      // Use sprite rendering
+      buildingSprite = new PIXI.Sprite(texture);
+
+      // Calculate scale to fit the building size
+      const targetWidth = width;
+      const targetHeight = height;
+      const scaleX = targetWidth / texture.width;
+      const scaleY = targetHeight / texture.height;
+      const scale = Math.min(scaleX, scaleY) * (spriteConfig.scaleMultiplier || 1.0);
+
+      buildingSprite.scale.set(scale, scale);
+
+      // Center the sprite
+      buildingSprite.anchor.set(spriteConfig.anchor?.x || 0.5, spriteConfig.anchor?.y || 0.5);
+      buildingSprite.x = width / 2;
+      buildingSprite.y = height / 2 + (spriteConfig.yOffset || 0);
+
+      container.addChild(buildingSprite);
+    } else {
+      // Fallback to colored rectangle if sprite not loaded
+      buildingRect = new PIXI.Graphics();
+      buildingRect.beginFill(color);
+      buildingRect.lineStyle(2, 0x000000, 0.5);
+      buildingRect.drawRoundedRect(0, 0, width, height, 4);
+      buildingRect.endFill();
+      container.addChild(buildingRect);
+    }
+  }
+
+  // Health bars are NOT shown in village view - only in battle mode
+
+  // Label removed - no labels above buildings
 
   // Drag state
   let isDragging = false;
@@ -494,14 +629,20 @@ function createBuildingContainer(
 
   // Interaction handlers
   container.on('pointerover', () => {
-    buildingRect.tint = 0xcccccc;
-    label.visible = true; // Show label on hover
+    if (buildingSprite) {
+      buildingSprite.tint = 0xcccccc;
+    } else if (buildingRect) {
+      buildingRect.tint = 0xcccccc;
+    }
   });
 
   container.on('pointerout', () => {
     if (!isDragging) {
-      buildingRect.tint = 0xffffff;
-      label.visible = selectedBuildingRef?.current?.id === building.id; // Hide unless selected
+      if (buildingSprite) {
+        buildingSprite.tint = 0xffffff;
+      } else if (buildingRect) {
+        buildingRect.tint = 0xffffff;
+      }
     }
   });
 
@@ -513,7 +654,6 @@ function createBuildingContainer(
       if (selectedBuildingRef && !isShiftClick) {
         selectedBuildingRef.current = building;
       }
-      label.visible = true; // Keep label visible when selected
     }
 
     // Start drag
@@ -704,7 +844,7 @@ function checkPlacementValid(
   buildings: Building[],
   excludeBuildingId: string | null,
 ): boolean {
-  if (x < 0 || y < 0 || x + width > GRID_SIZE || y + height > GRID_SIZE) {
+  if (x < 0 || y < 0 || x + width > GRID_WIDTH || y + height > GRID_HEIGHT) {
     return false;
   }
 
@@ -745,7 +885,7 @@ function checkMultiPlacementValid(
     const newY = wall.positionY + deltaY;
 
     // Check bounds
-    if (newX < 0 || newY < 0 || newX + 1 > GRID_SIZE || newY + 1 > GRID_SIZE) {
+    if (newX < 0 || newY < 0 || newX + 1 > GRID_WIDTH || newY + 1 > GRID_HEIGHT) {
       return false;
     }
 

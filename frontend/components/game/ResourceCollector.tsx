@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Coins, Droplet, Sparkles } from 'lucide-react';
 import { formatNumber } from '@/lib/utils';
+import { useToastStore } from '@/lib/stores/useToastStore';
+import { useFloatingNumberStore } from '@/lib/stores/useFloatingNumberStore';
 
 interface ResourceCollectorProps {
   pendingGold: number;
@@ -16,6 +18,8 @@ interface ResourceCollectorProps {
 export function ResourceCollector({ pendingGold, pendingElixir, onCollect }: ResourceCollectorProps) {
   const [isCollecting, setIsCollecting] = useState(false);
   const [showAnimation, setShowAnimation] = useState(false);
+  const { success } = useToastStore();
+  const { showGold, showElixir } = useFloatingNumberStore();
 
   const hasPending = pendingGold > 0 || pendingElixir > 0;
 
@@ -25,6 +29,24 @@ export function ResourceCollector({ pendingGold, pendingElixir, onCollect }: Res
 
     try {
       await onCollect();
+
+      // Show floating numbers at center of screen
+      const centerX = window.innerWidth / 2;
+      const centerY = window.innerHeight / 2;
+
+      if (pendingGold > 0) {
+        showGold(centerX - 50, centerY, pendingGold);
+      }
+      if (pendingElixir > 0) {
+        showElixir(centerX + 50, centerY, pendingElixir);
+      }
+
+      // Show success toast
+      const resources = [];
+      if (pendingGold > 0) resources.push(`${formatNumber(pendingGold)} gold`);
+      if (pendingElixir > 0) resources.push(`${formatNumber(pendingElixir)} elixir`);
+      success('Resources Collected!', `You collected ${resources.join(' and ')}`);
+
       // Keep animation visible for a moment
       setTimeout(() => setShowAnimation(false), 1500);
     } catch (error) {

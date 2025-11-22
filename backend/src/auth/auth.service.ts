@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { VillagesService } from '../villages/villages.service';
-import { RegisterDto, LoginDto } from './dto';
+import { RegisterDto, LoginDto, UpdateUsernameDto } from './dto';
 import { JwtPayload } from './strategies/jwt.strategy';
 
 @Injectable()
@@ -97,5 +97,23 @@ export class AuthService {
 
   async validateUser(userId: string) {
     return this.usersService.findById(userId);
+  }
+
+  async updateUsername(userId: string, updateUsernameDto: UpdateUsernameDto) {
+    // Check if username is already taken
+    const existingUser = await this.usersService.findByUsername(updateUsernameDto.username);
+
+    if (existingUser && existingUser.id !== userId) {
+      throw new ConflictException('Username already exists');
+    }
+
+    // Update username
+    const updatedUser = await this.usersService.updateUsername(userId, updateUsernameDto.username);
+
+    return {
+      userId: updatedUser.id,
+      username: updatedUser.username,
+      email: updatedUser.email,
+    };
   }
 }

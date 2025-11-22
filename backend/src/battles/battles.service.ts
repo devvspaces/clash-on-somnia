@@ -803,4 +803,161 @@ export class BattlesService {
       console.log(`Deducted ${troopGroup.count} ${troopGroup.type} from village ${villageId}`);
     }
   }
+
+  /**
+   * Get active battles for a user (ongoing battles they can rejoin)
+   */
+  async getActiveBattlesForUser(villageId: string) {
+    const activeBattles = await this.db
+      .select({
+        id: battles.id,
+        attackerId: battles.attackerId,
+        defenderId: battles.defenderId,
+        attackerTroops: battles.attackerTroops,
+        destructionPercentage: battles.destructionPercentage,
+        stars: battles.stars,
+        lootGold: battles.lootGold,
+        lootElixir: battles.lootElixir,
+        status: battles.status,
+        createdAt: battles.createdAt,
+        attackerVillage: {
+          id: villages.id,
+          name: villages.name,
+        },
+      })
+      .from(battles)
+      .innerJoin(villages, eq(battles.attackerId, villages.id)) // Use INNER JOIN - attacker must exist
+      .where(
+        and(
+          eq(battles.attackerId, villageId),
+          eq(battles.status, 'active'),
+        ),
+      )
+      .orderBy(desc(battles.createdAt))
+      .limit(20);
+
+    // Filter out battles where session no longer exists and mark them as completed
+    const validBattles = [];
+    for (const battle of activeBattles) {
+      const session = this.battleSessionManager.getSession(battle.id);
+      if (session) {
+        validBattles.push(battle);
+      } else {
+        // Session doesn't exist but battle is marked active - clean it up
+        console.log(`Cleaning up stale battle ${battle.id} - session not found`);
+        try {
+          await this.db
+            .update(battles)
+            .set({ status: 'completed' })
+            .where(eq(battles.id, battle.id));
+        } catch (error) {
+          console.error(`Failed to cleanup stale battle ${battle.id}:`, error);
+        }
+      }
+    }
+
+    // Get defender village names for each valid battle
+    const battlesWithDefender = await Promise.all(
+      validBattles.map(async (battle) => {
+        try {
+          const [defenderVillage] = await this.db
+            .select({ id: villages.id, name: villages.name })
+            .from(villages)
+            .where(eq(villages.id, battle.defenderId))
+            .limit(1);
+
+          return {
+            ...battle,
+            defenderVillage: defenderVillage || { id: battle.defenderId || 'unknown', name: 'Unknown' },
+          };
+        } catch (error) {
+          console.error(`Failed to fetch defender village for battle ${battle.id}:`, error);
+          return {
+            ...battle,
+            defenderVillage: { id: battle.defenderId || 'unknown', name: 'Unknown' },
+          };
+        }
+      }),
+    );
+
+    return battlesWithDefender;
+  }
+
+  /**
+   * Cleanup stale battles (battles marked active but with no session)
+   * Should be called periodically
+   */
+  async cleanupStaleBattles(): Promise<number> {
+    try {
+      // Find all active battles
+      const activeBattles = await this.db
+        .select({ id: battles.id })
+        .from(battles)
+        .where(eq(battles.status, 'active'));
+
+      let cleanedCount = 0;
+
+      for (const battle of activeBattles) {
+        const session = this.battleSessionManager.getSession(battle.id);
+        if (!session) {
+          // Mark as completed
+          try {
+            await this.db
+              .update(battles)
+              .set({ status: 'completed' })
+              .where(eq(battles.id, battle.id));
+            cleanedCount++;
+          } catch (error) {
+            console.error(`Failed to cleanup battle ${battle.id}:`, error);
+          }
+        }
+      }
+
+      if (cleanedCount > 0) {
+        console.log(`Cleaned up ${cleanedCount} stale battles`);
+      }
+
+      return cleanedCount;
+    } catch (error) {
+      console.error('Error in cleanupStaleBattles:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Get battle session by session ID for rejoining
+   */
+  async getBattleSessionById(sessionId: string, userId: string) {
+    // Get the battle session from the session manager
+    const session = this.battleSessionManager.getSession(sessionId);
+
+    if (!session) {
+      console.log(`Session ${sessionId} not found in manager`);
+      return null;
+    }
+
+    // Verify user owns this battle
+    if (session.attackerId !== userId) {
+      console.log(`User ${userId} does not own session ${sessionId}`);
+      return null;
+    }
+
+    // Get battle record (session.id is the battle ID)
+    const battle = await this.getBattleById(session.id);
+    if (!battle || battle.status !== 'active') {
+      console.log(`Battle ${session.id} not found or not active`);
+      return null;
+    }
+
+    return {
+      battleId: session.id,
+      session: {
+        id: session.id,
+        status: session.status,
+        buildings: session.buildings,
+        maxTroops: session.maxTroops,
+      },
+      troops: battle.attackerTroops, // Include troops from battle record for rejoin
+    };
+  }
 }

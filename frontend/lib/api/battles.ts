@@ -43,6 +43,7 @@ export interface BattleSession {
     buildings: BattleBuilding[];
     maxTroops: number;
   };
+  troops?: { type: string; count: number }[]; // Troops from battle record for rejoining
 }
 
 export interface PublicBattle {
@@ -136,6 +137,22 @@ export const battlesApi = {
     const response = await apiClient.get('/battles/defenses', {
       params: { limit },
     });
+    return response.data;
+  },
+
+  /**
+   * Get user's active battles (ongoing battles they can rejoin)
+   */
+  getActiveBattles: async (): Promise<{ battles: PublicBattle[] }> => {
+    const response = await apiClient.get('/battles/active');
+    return response.data;
+  },
+
+  /**
+   * Get battle session by session ID (for rejoining)
+   */
+  getBattleSession: async (sessionId: string): Promise<BattleSession> => {
+    const response = await apiClient.get(`/battles/session/${sessionId}`);
     return response.data;
   },
 };
