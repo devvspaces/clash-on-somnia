@@ -48,7 +48,7 @@ export function FloatingResourceBar({ villageName, resources, isLoading }: Float
               </div>
               <div className="flex flex-col">
                 <span className="text-xs text-gray-400">Gold</span>
-                <span className="font-bold text-yellow-400">
+                <span className="font-bold text-yellow-400 font-numbers">
                   {formatNumber(resources.gold)}
                 </span>
               </div>
@@ -61,7 +61,7 @@ export function FloatingResourceBar({ villageName, resources, isLoading }: Float
               </div>
               <div className="flex flex-col">
                 <span className="text-xs text-gray-400">Elixir</span>
-                <span className="font-bold text-purple-400">
+                <span className="font-bold text-purple-400 font-numbers">
                   {formatNumber(resources.elixir)}
                 </span>
               </div>
@@ -75,7 +75,7 @@ export function FloatingResourceBar({ villageName, resources, isLoading }: Float
                 </div>
                 <div className="flex flex-col">
                   <span className="text-xs text-gray-400">Troops</span>
-                  <span className="font-bold text-blue-400">
+                  <span className="font-bold text-blue-400 font-numbers">
                     {resources.troops}
                   </span>
                 </div>

@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Swords, AlertCircle, CheckCircle, Users, Target, Gamepad2 } from 'lucide-react';
+import { Loader2, Swords, AlertCircle, CheckCircle, Users, Target, Gamepad2, X } from 'lucide-react';
 
 interface BattlePreparationProps {
   onBattleComplete: (battleResult: any) => void;
@@ -151,8 +151,8 @@ export function BattlePreparation({ onBattleComplete, onStartRealtimeBattle, onC
           </h2>
           <p className="text-sm text-gray-400">Select troops to deploy in battle</p>
         </div>
-        <Button variant="destructive" onClick={onCancel} className="bg-red-600 hover:bg-red-700">
-          Cancel
+        <Button variant="ghost" size="icon" onClick={onCancel} className="hover:bg-gray-800">
+          <X className="h-5 w-5 text-gray-400 hover:text-white" />
         </Button>
       </div>
 

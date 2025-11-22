@@ -143,9 +143,8 @@ export function BuildingShop({ gold, elixir, onSelectBuilding, onClose }: Buildi
               <h2 className="text-3xl font-bold text-amber-400">Building Shop</h2>
               <p className="text-sm text-gray-400">Select a building to place in your village</p>
             </div>
-            <Button variant="destructive" onClick={onClose} className="bg-red-600 hover:bg-red-700">
-              <X className="mr-2 h-4 w-4" />
-              Close
+            <Button variant="ghost" size="icon" onClick={onClose} className="hover:bg-gray-800">
+              <X className="h-5 w-5 text-gray-400 hover:text-white" />
             </Button>
           </div>
 
@@ -164,15 +163,15 @@ export function BuildingShop({ gold, elixir, onSelectBuilding, onClose }: Buildi
           {/* Tabs */}
           <Tabs value={selectedCategory} onValueChange={(v) => setSelectedCategory(v as any)}>
             <TabsList className="grid w-full grid-cols-3 bg-gray-800 border border-gray-700">
-              <TabsTrigger value="resource" className="data-[state=active]:bg-amber-600 data-[state=active]:text-white">
+              <TabsTrigger value="resource" className="data-[state=active]:bg-amber-600 data-[state=active]:text-white" style={{letterSpacing: '0.05em'}}>
                 <Building2 className="mr-2 h-4 w-4" />
                 Resources
               </TabsTrigger>
-              <TabsTrigger value="defense" className="data-[state=active]:bg-amber-600 data-[state=active]:text-white">
+              <TabsTrigger value="defense" className="data-[state=active]:bg-amber-600 data-[state=active]:text-white" style={{letterSpacing: '0.05em'}}>
                 <Shield className="mr-2 h-4 w-4" />
                 Defense
               </TabsTrigger>
-              <TabsTrigger value="army" className="data-[state=active]:bg-amber-600 data-[state=active]:text-white">
+              <TabsTrigger value="army" className="data-[state=active]:bg-amber-600 data-[state=active]:text-white" style={{letterSpacing: '0.05em'}}>
                 <Swords className="mr-2 h-4 w-4" />
                 Army
               </TabsTrigger>

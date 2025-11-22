@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap');
+
 @font-face {
   font-family: 'KnightWarrior';
   src: url('/assets/fonts/KnightWarrior-w16n8.otf') format('opentype');
@@ -70,10 +72,10 @@
 
   /* Gaming font for numbers */
   .font-numbers {
-    font-family: 'KnightWarrior', monospace;
-    font-weight: normal;
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.02em;
   }
 
   /* Gaming font for headers */

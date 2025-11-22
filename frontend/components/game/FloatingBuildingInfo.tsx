@@ -60,19 +60,19 @@ export function FloatingBuildingInfo({
         <CardContent className="space-y-3">
           <div>
             <p className="font-bold text-lg">{visualConfig.name}</p>
-            <p className="text-sm text-muted-foreground">Level {building.level}</p>
+            <p className="text-sm text-muted-foreground">Level <span className="font-numbers">{building.level}</span></p>
           </div>
 
           <div className="flex justify-between text-sm">
             <span>Health:</span>
-            <span className="font-bold">
+            <span className="font-bold font-numbers">
               {building.health} / {building.maxHealth}
             </span>
           </div>
 
           <div className="flex justify-between text-sm">
             <span>Position:</span>
-            <span className="font-bold">
+            <span className="font-bold font-numbers">
               ({building.positionX}, {building.positionY})
             </span>
           </div>
@@ -103,7 +103,7 @@ export function FloatingBuildingInfo({
                 <div className="border-t pt-3 space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Stored:</span>
-                    <span className="font-bold text-green-600">
+                    <span className="font-bold text-green-600 font-numbers">
                       {building.type === 'gold_mine'
                         ? `${building.internalGold || 0} / ${building.internalGoldCapacity || 1000}`
                         : `${building.internalElixir || 0} / ${building.internalElixirCapacity || 1000}`
@@ -112,7 +112,7 @@ export function FloatingBuildingInfo({
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Production Rate:</span>
-                    <span className="font-bold">
+                    <span className="font-bold font-numbers">
                       {building.type === 'gold_mine' ? '50' : '40'}/hour
                     </span>
                   </div>
@@ -136,7 +136,7 @@ export function FloatingBuildingInfo({
             <div className="border-t pt-3">
               <div className="flex justify-between text-sm">
                 <span>Capacity:</span>
-                <span className="font-bold">10,000</span>
+                <span className="font-bold font-numbers">10,000</span>
               </div>
             </div>
           )}
@@ -146,17 +146,17 @@ export function FloatingBuildingInfo({
             <div className="border-t pt-3 space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Damage:</span>
-                <span className="font-bold text-red-600">
+                <span className="font-bold text-red-600 font-numbers">
                   {building.type === 'cannon' ? '80' : '50'}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span>Range:</span>
-                <span className="font-bold">{building.type === 'cannon' ? '5' : '7'}</span>
+                <span className="font-bold font-numbers">{building.type === 'cannon' ? '5' : '7'}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span>Attack Speed:</span>
-                <span className="font-bold">
+                <span className="font-bold font-numbers">
                   {building.type === 'cannon' ? '1.5s' : '1.0s'}
                 </span>
               </div>

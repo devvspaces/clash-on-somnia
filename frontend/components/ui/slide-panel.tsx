@@ -56,22 +56,22 @@ export function SlidePanel({
 
       {/* Slide Panel */}
       <div
-        className={`fixed top-0 right-0 h-full bg-background shadow-2xl z-50 flex flex-col border-l transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 right-0 h-full bg-gray-900 shadow-2xl z-50 flex flex-col border-l border-gray-800 transition-transform duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         style={{ width }}
       >
         {/* Header */}
         {title && (
-          <div className="flex items-center justify-between p-4 border-b">
-            <h2 className="text-xl font-bold">{title}</h2>
+          <div className="flex items-center justify-between p-4 border-b-2 border-amber-500">
+            <h2 className="text-2xl font-bold text-amber-400">{title}</h2>
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={onClose}
-              className="h-8 w-8 p-0"
+              className="h-8 w-8 p-0 hover:bg-gray-800"
             >
-              <X className="h-4 w-4" />
+              <X className="h-5 w-5 text-gray-400 hover:text-white" />
             </Button>
           </div>
         )}

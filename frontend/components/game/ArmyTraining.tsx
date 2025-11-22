@@ -142,9 +142,8 @@ export function ArmyTraining({ onClose }: ArmyTrainingProps) {
           <h2 className="text-3xl font-bold text-amber-400">Army Camp</h2>
           <p className="text-sm text-gray-400">Train troops and manage your army</p>
         </div>
-        <Button variant="destructive" onClick={onClose} className="bg-red-600 hover:bg-red-700">
-          <X className="mr-2 h-4 w-4" />
-          Close
+        <Button variant="ghost" size="icon" onClick={onClose} className="hover:bg-gray-800">
+          <X className="h-5 w-5 text-gray-400 hover:text-white" />
         </Button>
       </div>
 
