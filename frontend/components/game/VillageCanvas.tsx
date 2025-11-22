@@ -47,7 +47,8 @@ export function VillageCanvas({ buildings, onBuildingClick }: VillageCanvasProps
         setSpritesLoaded(true);
 
         // Lazy load decoration assets in background
-        await SpriteManager.preloadAssets(LAZY_LOAD_ASSETS);
+        // DISABLED: Decoration assets not available yet
+        // await SpriteManager.preloadAssets(LAZY_LOAD_ASSETS);
       } catch (error) {
         console.error('Error preloading sprites:', error);
         setSpritesLoaded(true); // Continue anyway with fallback
@@ -57,19 +58,20 @@ export function VillageCanvas({ buildings, onBuildingClick }: VillageCanvasProps
   }, []);
 
   // Generate decorations once buildings are available
-  useEffect(() => {
-    if (buildings.length > 0 && decorations.length === 0) {
-      const generatedDecorations = DecorationManager.generateDecorations({
-        gridWidth: GRID_SIZE,
-        gridHeight: GRID_SIZE,
-        density: 0.12,
-        seed: 42,
-        buildings,
-        categories: ['tree', 'plant'],
-      });
-      setDecorations(generatedDecorations);
-    }
-  }, [buildings, decorations.length]);
+  // DISABLED: Decoration assets not available yet
+  // useEffect(() => {
+  //   if (buildings.length > 0 && decorations.length === 0) {
+  //     const generatedDecorations = DecorationManager.generateDecorations({
+  //       gridWidth: GRID_SIZE,
+  //       gridHeight: GRID_SIZE,
+  //       density: 0.12,
+  //       seed: 42,
+  //       buildings,
+  //       categories: ['tree', 'plant'],
+  //     });
+  //     setDecorations(generatedDecorations);
+  //   }
+  // }, [buildings, decorations.length]);
 
   useEffect(() => {
     if (!canvasRef.current || !spritesLoaded) return;
@@ -92,9 +94,10 @@ export function VillageCanvas({ buildings, onBuildingClick }: VillageCanvasProps
     drawGroundTiles(app);
 
     // Draw decorations (after grid, before buildings)
-    decorations.forEach((decoration) => {
-      drawDecoration(app, decoration);
-    });
+    // DISABLED: Decoration assets not available yet
+    // decorations.forEach((decoration) => {
+    //   drawDecoration(app, decoration);
+    // });
 
     // Draw buildings
     buildings.forEach((building) => {

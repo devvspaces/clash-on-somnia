@@ -71,9 +71,10 @@ export function VillageCanvasPlacement({
         console.log('✅ Sprites loaded successfully');
 
         // Lazy load decoration assets in background
-        console.log('🌳 Lazy loading decoration assets...');
-        await SpriteManager.preloadAssets(LAZY_LOAD_ASSETS);
-        console.log('✅ Decoration assets loaded');
+        // DISABLED: Decoration assets not available yet
+        // console.log('🌳 Lazy loading decoration assets...');
+        // await SpriteManager.preloadAssets(LAZY_LOAD_ASSETS);
+        // console.log('✅ Decoration assets loaded');
       } catch (error) {
         console.error('❌ Error preloading sprites:', error);
         // Fallback: use colored rectangles if sprites fail to load
@@ -85,19 +86,20 @@ export function VillageCanvasPlacement({
   }, []);
 
   // Generate decorations once buildings are available
-  useEffect(() => {
-    if (buildings.length > 0 && decorations.length === 0) {
-      const generatedDecorations = DecorationManager.generateDecorations({
-        gridWidth: GRID_SIZE,
-        gridHeight: GRID_SIZE,
-        density: 0.12, // 12% of tiles have decorations
-        seed: 42, // Consistent seed for same layout
-        buildings,
-        categories: ['tree', 'plant'], // Only trees and plants, no rocks
-      });
-      setDecorations(generatedDecorations);
-    }
-  }, [buildings, decorations.length]);
+  // DISABLED: Decoration assets not available yet
+  // useEffect(() => {
+  //   if (buildings.length > 0 && decorations.length === 0) {
+  //     const generatedDecorations = DecorationManager.generateDecorations({
+  //       gridWidth: GRID_SIZE,
+  //       gridHeight: GRID_SIZE,
+  //       density: 0.12, // 12% of tiles have decorations
+  //       seed: 42, // Consistent seed for same layout
+  //       buildings,
+  //       categories: ['tree', 'plant'], // Only trees and plants, no rocks
+  //     });
+  //     setDecorations(generatedDecorations);
+  //   }
+  // }, [buildings, decorations.length]);
 
   // Initialize Pixi app ONCE
   useEffect(() => {

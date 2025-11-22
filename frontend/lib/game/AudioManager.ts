@@ -332,7 +332,7 @@ export { AudioManagerClass };
 
 // Predefined audio paths
 export const AUDIO_PATHS = {
-  BACKGROUND_MUSIC: '/assets/Land of fearless.mp3',
+  BACKGROUND_MUSIC: '/assets/Land%20of%20fearless.mp3', // URL-encoded space
   // Add more audio paths as needed
   // CLICK: '/assets/sfx/click.mp3',
   // BUILD: '/assets/sfx/build.mp3',
