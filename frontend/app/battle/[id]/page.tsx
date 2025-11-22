@@ -281,8 +281,18 @@ export default function BattlePage() {
       buildingContainer.position.set(building.position.x * TILE_SIZE, building.position.y * TILE_SIZE);
       layer.addChild(buildingContainer);
 
+      // Check if building is already destroyed (health = 0)
+      const isDestroyed = building.health <= 0;
+
       const healthBar = createHealthBar(building.health, building.maxHealth, buildingWidth);
       healthBar.position.set(building.position.x * TILE_SIZE, (building.position.y - 0.5) * TILE_SIZE);
+
+      // Hide health bar and grey out building if destroyed
+      if (isDestroyed) {
+        buildingContainer.alpha = 0.3;
+        healthBar.visible = false;
+      }
+
       layer.addChild(healthBar);
 
       buildingSpritesRef.current.set(building.id, {

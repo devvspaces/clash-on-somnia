@@ -272,9 +272,18 @@ export default function SpectateBattlePage() {
     buildingContainer.position.set(building.position.x * TILE_SIZE, building.position.y * TILE_SIZE);
     buildingsLayerRef.current.addChild(buildingContainer);
 
+    // Check if building is already destroyed (health = 0)
+    const isDestroyed = building.health <= 0;
+
     const healthBar = createHealthBar(building.health, building.maxHealth, buildingWidth);
     healthBar.position.set(building.position.x * TILE_SIZE, (building.position.y - 0.5) * TILE_SIZE);
     buildingsLayerRef.current.addChild(healthBar);
+
+    // Hide health bar and grey out building if destroyed
+    if (isDestroyed) {
+      buildingContainer.alpha = 0.3;
+      healthBar.visible = false;
+    }
 
     buildingSpritesRef.current.set(building.id, {
       id: building.id,
