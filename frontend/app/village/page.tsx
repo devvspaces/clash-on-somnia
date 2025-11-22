@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthStore, useVillageStore } from '@/lib/stores';
+import { useAuthStore, useVillageStore, useBattleStore } from '@/lib/stores';
 import { useFloatingNumberStore } from '@/lib/stores/useFloatingNumberStore';
 import { VillageCanvasPlacement } from '@/components/game/VillageCanvasPlacement';
 import { BuildingShop } from '@/components/game/BuildingShop';
@@ -179,9 +179,18 @@ export default function VillagePage() {
     await fetchVillage();
   };
 
-  const handleStartRealtimeBattle = async (session: BattleSession) => {
+  const handleStartRealtimeBattle = async (
+    session: BattleSession,
+    troops: { type: string; count: number }[],
+  ) => {
+    // Store battle session data in Zustand for clean URL routing
+    const { setBattleSession, setSelectedTroops } = useBattleStore.getState();
+    setBattleSession(session);
+    setSelectedTroops(troops);
+
     setShowBattlePrep(false);
-    router.push(`/battle/${session.id}`);
+    // Navigate with clean URL using battle session ID
+    router.push(`/battle/${session.session.id}`);
   };
 
   if (authLoading || villageLoading || !village) {
