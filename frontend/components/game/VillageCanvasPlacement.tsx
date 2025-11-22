@@ -25,6 +25,22 @@ const GRID_SIZE = 40;
 const TILE_SIZE = 15;
 const CANVAS_SIZE = GRID_SIZE * TILE_SIZE;
 
+// Ground tile paths
+const GROUND_TILE_1 = '/assets/kenney_tiny-town/Tiles/tile_0001.png'; // Plain grass (common)
+const GROUND_TILE_2 = '/assets/kenney_tiny-town/Tiles/tile_0002.png'; // Grass with flowers (rare)
+
+/**
+ * Deterministic function to get ground tile for a position
+ * Returns tile_0001 ~75% of the time, tile_0002 ~25% of the time
+ * Same position always returns the same tile
+ */
+function getGroundTileForPosition(x: number, y: number): string {
+  // Use simple hash function for deterministic pseudo-random value
+  const hash = ((x * 73856093) ^ (y * 19349663)) >>> 0;
+  // Use modulo 4 to get value 0-3, then tile_0002 only when value is 0 (25% chance)
+  return (hash % 4) === 0 ? GROUND_TILE_2 : GROUND_TILE_1;
+}
+
 export function VillageCanvasPlacement({
   buildings,
   onBuildingClick,
@@ -120,6 +136,44 @@ export function VillageCanvasPlacement({
     };
   }, []);
 
+  // Render ground tiles on empty grid cells
+  useEffect(() => {
+    const app = appRef.current;
+    if (!app || !spritesLoaded) return;
+
+    // Create ground tiles container (if not exists)
+    let groundContainer = app.stage.getChildByName('groundTiles') as PIXI.Container;
+
+    if (!groundContainer) {
+      groundContainer = new PIXI.Container();
+      groundContainer.name = 'groundTiles';
+
+      // Render ground tile for each grid cell
+      for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+          const tilePath = getGroundTileForPosition(x, y);
+          const texture = SpriteManager.getTextureSync(tilePath);
+
+          if (texture) {
+            const sprite = new PIXI.Sprite(texture);
+            sprite.x = x * TILE_SIZE;
+            sprite.y = y * TILE_SIZE;
+
+            // Scale to fit tile size
+            sprite.width = TILE_SIZE;
+            sprite.height = TILE_SIZE;
+
+            groundContainer.addChild(sprite);
+          }
+        }
+      }
+
+      // Add ground tiles at index 1 (after background, before everything else)
+      app.stage.addChildAt(groundContainer, 1);
+      console.log('🌱 Rendered ground tiles on grid');
+    }
+  }, [spritesLoaded]);
+
   // Render decorations on canvas
   useEffect(() => {
     const app = appRef.current;
@@ -171,9 +225,9 @@ export function VillageCanvasPlacement({
       decorationContainer.addChild(sprite);
     });
 
-    // Add decoration container to stage (after grid, before buildings)
-    // Insert at index 1 (after grid at index 0)
-    app.stage.addChildAt(decorationContainer, 1);
+    // Add decoration container to stage (after ground tiles, before buildings)
+    // Insert at index 2 (after grid at 0, ground tiles at 1)
+    app.stage.addChildAt(decorationContainer, 2);
 
     console.log(`🎨 Rendered ${decorations.length} decorations on canvas`);
   }, [decorations]);

@@ -17,6 +17,22 @@ const GRID_SIZE = 40; // 40x40 grid
 const TILE_SIZE = 15; // pixels per tile
 const CANVAS_SIZE = GRID_SIZE * TILE_SIZE; // 600px
 
+// Ground tile paths
+const GROUND_TILE_1 = '/assets/kenney_tiny-town/Tiles/tile_0001.png'; // Plain grass (common)
+const GROUND_TILE_2 = '/assets/kenney_tiny-town/Tiles/tile_0002.png'; // Grass with flowers (rare)
+
+/**
+ * Deterministic function to get ground tile for a position
+ * Returns tile_0001 ~75% of the time, tile_0002 ~25% of the time
+ * Same position always returns the same tile
+ */
+function getGroundTileForPosition(x: number, y: number): string {
+  // Use simple hash function for deterministic pseudo-random value
+  const hash = ((x * 73856093) ^ (y * 19349663)) >>> 0;
+  // Use modulo 4 to get value 0-3, then tile_0002 only when value is 0 (25% chance)
+  return (hash % 4) === 0 ? GROUND_TILE_2 : GROUND_TILE_1;
+}
+
 export function VillageCanvas({ buildings, onBuildingClick }: VillageCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<PIXI.Application | null>(null);
@@ -72,6 +88,9 @@ export function VillageCanvas({ buildings, onBuildingClick }: VillageCanvasProps
     // Draw grid
     drawGrid(app);
 
+    // Draw ground tiles
+    drawGroundTiles(app);
+
     // Draw decorations (after grid, before buildings)
     decorations.forEach((decoration) => {
       drawDecoration(app, decoration);
@@ -119,6 +138,28 @@ function drawGrid(app: PIXI.Application) {
   }
 
   app.stage.addChild(graphics);
+}
+
+function drawGroundTiles(app: PIXI.Application) {
+  // Render ground tile for each grid cell
+  for (let y = 0; y < GRID_SIZE; y++) {
+    for (let x = 0; x < GRID_SIZE; x++) {
+      const tilePath = getGroundTileForPosition(x, y);
+      const texture = SpriteManager.getTextureSync(tilePath);
+
+      if (texture) {
+        const sprite = new PIXI.Sprite(texture);
+        sprite.x = x * TILE_SIZE;
+        sprite.y = y * TILE_SIZE;
+
+        // Scale to fit tile size
+        sprite.width = TILE_SIZE;
+        sprite.height = TILE_SIZE;
+
+        app.stage.addChild(sprite);
+      }
+    }
+  }
 }
 
 function drawBuilding(
