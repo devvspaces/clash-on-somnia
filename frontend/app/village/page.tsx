@@ -18,6 +18,7 @@ import { UserProfile } from '@/components/game/UserProfile';
 import { ToastContainer } from '@/components/ui/ToastContainer';
 import { FloatingNumbersContainer } from '@/components/ui/FloatingNumber';
 import { GameAtmosphere } from '@/components/game/GameAtmosphere';
+import { VillageLoadingScreen } from '@/components/game/VillageLoadingScreen';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SlidePanel } from '@/components/ui/slide-panel';
@@ -46,6 +47,7 @@ export default function VillagePage() {
     buildingType: BuildingType;
   } | null>(null);
   const [isPlacing, setIsPlacing] = useState(false);
+  const [showLoadingScreen, setShowLoadingScreen] = useState(true);
 
   // Helper function to check if building is under construction
   const isBuildingUnderConstruction = (building: Building): boolean => {
@@ -193,12 +195,11 @@ export default function VillagePage() {
     router.push(`/battle/${session.session.id}`);
   };
 
-  if (authLoading || villageLoading || !village) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p>Loading...</p>
-      </div>
-    );
+  // Show loading screen if auth is loading, village is loading, or village data not available
+  const isLoading = authLoading || villageLoading || !village;
+
+  if (isLoading || showLoadingScreen) {
+    return <VillageLoadingScreen onComplete={() => setShowLoadingScreen(false)} />;
   }
 
   // Count buildings

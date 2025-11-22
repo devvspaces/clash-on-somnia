@@ -1,6 +1,6 @@
 'use client';
 
-import { Coins, Droplet, Users, LogOut, User } from 'lucide-react';
+import { Coins, Droplet, Users, LogOut, User, Swords } from 'lucide-react';
 import { ResourcesWithPending } from '@/lib/api';
 import { useAuthStore } from '@/lib/stores';
 import { useRouter } from 'next/navigation';
@@ -30,9 +30,14 @@ export function FloatingResourceBar({ villageName, resources, isLoading, onProfi
   return (
     <div className="fixed left-1/2 top-4 z-40 -translate-x-1/2">
       <div className="flex items-center gap-4 rounded-lg bg-gray-900/90 px-6 py-3 shadow-2xl backdrop-blur-sm">
-        {/* App Name */}
-        <div className="flex items-center gap-2 border-r border-gray-700 pr-4">
-          <h1 className="text-xl font-bold text-amber-400">Clash on Somnia</h1>
+        {/* App Logo & Name */}
+        <div className="flex items-center gap-3 border-r border-gray-700 pr-4">
+          <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg flex items-center justify-center">
+            <Swords className="w-5 h-5 text-white" />
+          </div>
+          <h1 className="text-xl font-bold bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
+            CLASH ON SOMNIA
+          </h1>
         </div>
 
         {/* Village Name */}
