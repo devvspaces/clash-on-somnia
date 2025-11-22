@@ -17,6 +17,7 @@ import { FloatingBuildingInfo } from '@/components/game/FloatingBuildingInfo';
 import { UserProfile } from '@/components/game/UserProfile';
 import { ToastContainer } from '@/components/ui/ToastContainer';
 import { FloatingNumbersContainer } from '@/components/ui/FloatingNumber';
+import { GameAtmosphere } from '@/components/game/GameAtmosphere';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { SlidePanel } from '@/components/ui/slide-panel';
@@ -197,6 +198,9 @@ export default function VillagePage() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
+      {/* Game Atmosphere Effects */}
+      <GameAtmosphere />
+
       {/* Full-screen Canvas */}
       <div className="absolute inset-0">
         <VillageCanvasPlacement
