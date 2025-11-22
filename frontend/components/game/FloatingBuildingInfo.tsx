@@ -265,42 +265,42 @@ export function FloatingBuildingInfo({
                     +{building.type === 'gold_mine' ? '50' : '40'}/hr
                   </span>
                 </div>
-                {storedAmount > 0 && (
-                  <>
-                    {isStorageFull && (
-                      <div className="bg-orange-500/20 rounded-lg p-3 mb-3 border border-orange-500/30">
-                        <p className="text-sm text-orange-400 text-center">
-                          ⚠️ Storage is full! Upgrade storage to collect more.
-                        </p>
-                      </div>
-                    )}
-                    <Button
-                      onClick={handleCollect}
-                      disabled={isCollecting || isStorageFull}
-                      className={`w-full transition-all duration-300 ${
-                        isStorageFull
-                          ? 'bg-gray-700 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 hover:scale-105'
-                      }`}
-                    >
-                      {isCollecting ? (
-                        <>
-                          <Sparkles className="w-4 h-4 mr-2 animate-spin" />
-                          Collecting...
-                        </>
-                      ) : isStorageFull ? (
-                        <>
-                          🏦 Storage Full
-                        </>
-                      ) : (
-                        <>
-                          <Zap className="w-4 h-4 mr-2" />
-                          Collect Resources
-                        </>
-                      )}
-                    </Button>
-                  </>
+                {isStorageFull && (
+                  <div className="bg-orange-500/20 rounded-lg p-3 mb-3 border border-orange-500/30">
+                    <p className="text-sm text-orange-400 text-center">
+                      ⚠️ Storage is full! Upgrade storage to collect more.
+                    </p>
+                  </div>
                 )}
+                <Button
+                  onClick={handleCollect}
+                  disabled={isCollecting || isStorageFull || storedAmount === 0}
+                  className={`w-full transition-all duration-300 ${
+                    isStorageFull || storedAmount === 0
+                      ? 'bg-gray-700 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 hover:scale-105'
+                  }`}
+                >
+                  {isCollecting ? (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2 animate-spin" />
+                      Collecting...
+                    </>
+                  ) : isStorageFull ? (
+                    <>
+                      🏦 Storage Full
+                    </>
+                  ) : storedAmount === 0 ? (
+                    <>
+                      💤 Empty
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-4 h-4 mr-2" />
+                      Collect Resources
+                    </>
+                  )}
+                </Button>
               </motion.div>
             )}
 

@@ -251,6 +251,14 @@ export default function VillagePage() {
               onCollect={async () => {
                 await loadResources();
                 await fetchVillage();
+                // Update selectedBuilding with fresh data after collection
+                const updatedVillage = useVillageStore.getState().village;
+                if (updatedVillage && selectedBuilding) {
+                  const updatedBuilding = updatedVillage.buildings.find(b => b.id === selectedBuilding.id);
+                  if (updatedBuilding) {
+                    setSelectedBuilding(updatedBuilding);
+                  }
+                }
               }}
               currentGold={resources?.gold || 0}
               maxGold={resources?.capacity.gold || 10000}
