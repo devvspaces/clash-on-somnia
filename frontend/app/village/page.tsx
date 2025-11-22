@@ -190,7 +190,7 @@ export default function VillagePage() {
   const elixirCollectors = village.buildings.filter((b) => b.type === 'elixir_collector').length;
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-sky-500">
+    <div className="relative h-screen w-screen overflow-hidden">
       {/* Full-screen Canvas */}
       <div className="absolute inset-0">
         <VillageCanvasPlacement
