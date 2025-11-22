@@ -38,9 +38,9 @@ export function FloatingResourceBar({ villageName, resources, isLoading }: Float
                   {formatNumber(resources.gold)}
                 </span>
               </div>
-              {resources.pendingGold > 0 && (
+              {resources.pending?.gold > 0 && (
                 <span className="text-xs text-green-400">
-                  +{formatNumber(resources.pendingGold)}
+                  +{formatNumber(resources.pending.gold)}
                 </span>
               )}
             </div>
@@ -56,9 +56,9 @@ export function FloatingResourceBar({ villageName, resources, isLoading }: Float
                   {formatNumber(resources.elixir)}
                 </span>
               </div>
-              {resources.pendingElixir > 0 && (
+              {resources.pending?.elixir > 0 && (
                 <span className="text-xs text-green-400">
-                  +{formatNumber(resources.pendingElixir)}
+                  +{formatNumber(resources.pending.elixir)}
                 </span>
               )}
             </div>

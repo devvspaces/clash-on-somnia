@@ -27,10 +27,10 @@ export function FloatingBuildingInfo({
   const [isCollecting, setIsCollecting] = useState(false);
   const visualConfig = getBuildingVisual(building.type);
 
-  const handleCollect = async (resourceType: 'gold' | 'elixir') => {
+  const handleCollect = async () => {
     try {
       setIsCollecting(true);
-      await resourcesApi.collectFromBuilding(building.id, resourceType);
+      await resourcesApi.collectFromBuilding(building.id);
       await onCollect();
     } catch (error: any) {
       console.error('Failed to collect:', error);
@@ -104,8 +104,10 @@ export function FloatingBuildingInfo({
                   <div className="flex justify-between text-sm">
                     <span>Stored:</span>
                     <span className="font-bold text-green-600">
-                      {building.internalStorage || 0} /{' '}
-                      {building.type === 'gold_mine' ? 1000 : 1000}
+                      {building.type === 'gold_mine'
+                        ? `${building.internalGold || 0} / ${building.internalGoldCapacity || 1000}`
+                        : `${building.internalElixir || 0} / ${building.internalElixirCapacity || 1000}`
+                      }
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
@@ -114,11 +116,10 @@ export function FloatingBuildingInfo({
                       {building.type === 'gold_mine' ? '50' : '40'}/hour
                     </span>
                   </div>
-                  {building.internalStorage && building.internalStorage > 0 && (
+                  {((building.type === 'gold_mine' && building.internalGold > 0) ||
+                    (building.type === 'elixir_collector' && building.internalElixir > 0)) && (
                     <Button
-                      onClick={() =>
-                        handleCollect(building.type === 'gold_mine' ? 'gold' : 'elixir')
-                      }
+                      onClick={handleCollect}
                       className="w-full"
                       disabled={isCollecting}
                     >

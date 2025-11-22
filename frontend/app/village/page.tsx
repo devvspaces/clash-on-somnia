@@ -102,7 +102,7 @@ export default function VillagePage() {
   const loadResources = async () => {
     try {
       setIsLoadingResources(true);
-      const data = await resourcesApi.getResourcesWithPending();
+      const data = await resourcesApi.getMyResources();
       setResources(data);
     } catch (error) {
       console.error('Failed to load resources:', error);
@@ -116,7 +116,11 @@ export default function VillagePage() {
 
     setIsPlacing(true);
     try {
-      const newBuilding = await buildingsApi.createBuilding(placementMode.buildingType, x, y);
+      const result = await buildingsApi.placeBuilding({
+        type: placementMode.buildingType,
+        positionX: x,
+        positionY: y,
+      });
       await fetchVillage();
       await loadResources();
       setPlacementMode(null);
@@ -146,7 +150,10 @@ export default function VillagePage() {
 
   const handleMoveBuilding = async (buildingId: string, x: number, y: number) => {
     try {
-      const updated = await buildingsApi.moveBuilding(buildingId, x, y);
+      const updated = await buildingsApi.moveBuilding(buildingId, {
+        positionX: x,
+        positionY: y,
+      });
       await fetchVillage();
     } catch (error: any) {
       console.error('Failed to move building:', error);
