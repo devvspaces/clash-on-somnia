@@ -5,10 +5,11 @@ import { getBuildingVisual } from '@/lib/config/buildings';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Info, X, Home, Heart, Coins, Droplet, Zap, Shield, Target, Clock, Sparkles } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToastStore } from '@/lib/stores/useToastStore';
 import { useFloatingNumberStore } from '@/lib/stores/useFloatingNumberStore';
+import { buildingsApi, BuildingConfig } from '@/lib/api/buildings';
 
 interface FloatingBuildingInfoProps {
   building: Building;
@@ -36,11 +37,25 @@ export function FloatingBuildingInfo({
   maxElixir = 10000,
 }: FloatingBuildingInfoProps) {
   const [isCollecting, setIsCollecting] = useState(false);
+  const [buildingConfig, setBuildingConfig] = useState<BuildingConfig | null>(null);
   const visualConfig = getBuildingVisual(building.type);
   const { success, warning } = useToastStore();
   const { showGold, showElixir } = useFloatingNumberStore();
 
   const isUnderConstruction = isBuildingUnderConstruction(building);
+
+  // Load building config from backend
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const configs = await buildingsApi.getBuildingConfigs();
+        setBuildingConfig(configs[building.type] || null);
+      } catch (error) {
+        console.error('Failed to load building config:', error);
+      }
+    };
+    loadConfig();
+  }, [building.type]);
 
   const handleCollect = async () => {
     try {
@@ -259,12 +274,14 @@ export function FloatingBuildingInfo({
                     } rounded-full`}
                   />
                 </div>
-                <div className="flex items-center justify-between text-sm mb-3">
-                  <span className="text-gray-400">Production</span>
-                  <span className="font-bold text-green-400 font-numbers">
-                    +{building.type === 'gold_mine' ? '50' : '40'}/hr
-                  </span>
-                </div>
+                {buildingConfig?.generationRate && (
+                  <div className="flex items-center justify-between text-sm mb-3">
+                    <span className="text-gray-400">Production</span>
+                    <span className="font-bold text-green-400 font-numbers">
+                      +{buildingConfig.generationRate}/hr
+                    </span>
+                  </div>
+                )}
                 {isStorageFull && (
                   <div className="bg-orange-500/20 rounded-lg p-3 mb-3 border border-orange-500/30">
                     <p className="text-sm text-orange-400 text-center">
@@ -305,7 +322,7 @@ export function FloatingBuildingInfo({
             )}
 
             {/* Storage Info */}
-            {isStorage && (
+            {isStorage && buildingConfig && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -314,13 +331,15 @@ export function FloatingBuildingInfo({
               >
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-400">Capacity</span>
-                  <span className="text-xl font-bold text-blue-400 font-numbers">10,000</span>
+                  <span className="text-xl font-bold text-blue-400 font-numbers">
+                    {buildingConfig.capacity?.toLocaleString() || 'N/A'}
+                  </span>
                 </div>
               </motion.div>
             )}
 
             {/* Defense Info */}
-            {isDefense && (
+            {isDefense && buildingConfig?.defense && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -335,19 +354,19 @@ export function FloatingBuildingInfo({
                   <div className="bg-red-500/20 rounded-lg p-2 text-center">
                     <p className="text-xs text-gray-400 mb-1">DMG</p>
                     <p className="text-lg font-bold text-red-400 font-numbers">
-                      {building.type === 'cannon' ? '80' : '50'}
+                      {buildingConfig.defense.damage}
                     </p>
                   </div>
                   <div className="bg-blue-500/20 rounded-lg p-2 text-center">
                     <p className="text-xs text-gray-400 mb-1">Range</p>
                     <p className="text-lg font-bold text-blue-400 font-numbers">
-                      {building.type === 'cannon' ? '5' : '7'}
+                      {buildingConfig.defense.range}
                     </p>
                   </div>
                   <div className="bg-yellow-500/20 rounded-lg p-2 text-center">
                     <p className="text-xs text-gray-400 mb-1">Speed</p>
                     <p className="text-sm font-bold text-yellow-400 font-numbers">
-                      {building.type === 'cannon' ? '1.5s' : '1.0s'}
+                      {buildingConfig.defense.attackSpeed}s
                     </p>
                   </div>
                 </div>

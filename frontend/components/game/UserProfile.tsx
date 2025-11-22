@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Trophy, Swords, Target, Star, Calendar, Edit2, Check, Sparkles } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores/useAuthStore';
 import { useToastStore } from '@/lib/stores/useToastStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { battlesApi } from '@/lib/api/battles';
+import { format } from 'date-fns';
 
 interface UserProfileProps {
   isOpen: boolean;
@@ -19,21 +21,74 @@ export function UserProfile({ isOpen, onClose }: UserProfileProps) {
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [newUsername, setNewUsername] = useState(user?.username || '');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [battleStats, setBattleStats] = useState({
+    totalBattles: 0,
+    wins: 0,
+    losses: 0,
+    winRate: 0,
+  });
 
-  // Mock stats - replace with real data later
+  // Load battle statistics
+  useEffect(() => {
+    const loadBattleStats = async () => {
+      if (!user) return;
+
+      try {
+        setIsLoadingStats(true);
+        // Get both attack and defense history
+        const [attacksResponse, defensesResponse] = await Promise.all([
+          battlesApi.getHistory(1000), // Get all battles
+          battlesApi.getDefenses(1000),
+        ]);
+
+        const attacks = attacksResponse.battles;
+        const defenses = defensesResponse.battles;
+
+        // Calculate attack wins (50% destruction or more = win)
+        const attackWins = attacks.filter(b => b.destructionPercentage >= 50).length;
+
+        // Calculate defense wins (attacker got less than 50% destruction = defensive win)
+        const defenseWins = defenses.filter(b => b.destructionPercentage < 50).length;
+
+        const totalBattles = attacks.length + defenses.length;
+        const totalWins = attackWins + defenseWins;
+        const totalLosses = totalBattles - totalWins;
+        const winRate = totalBattles > 0 ? Math.round((totalWins / totalBattles) * 100) : 0;
+
+        setBattleStats({
+          totalBattles,
+          wins: totalWins,
+          losses: totalLosses,
+          winRate,
+        });
+      } catch (error) {
+        console.error('Failed to load battle stats:', error);
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+
+    if (isOpen) {
+      loadBattleStats();
+    }
+  }, [isOpen, user]);
+
+  // Format joined date
+  const joinedDate = user?.createdAt
+    ? format(new Date(user.createdAt), 'MMM d, yyyy')
+    : 'Unknown';
+
   const stats = {
-    level: 12,
-    xp: 3450,
-    xpToNextLevel: 5000,
-    totalBattles: 87,
-    wins: 62,
-    losses: 25,
-    winRate: 71,
-    trophies: 1850,
-    highestTrophies: 2100,
-    goldLooted: 125000,
-    elixirLooted: 98000,
-    joinedDate: 'Nov 15, 2024',
+    level: '∞', // Infinity symbol
+    xp: 0,
+    xpToNextLevel: 0,
+    totalBattles: battleStats.totalBattles,
+    wins: battleStats.wins,
+    losses: battleStats.losses,
+    winRate: battleStats.winRate,
+    trophies: 0, // Hardcoded as not implemented yet
+    joinedDate,
   };
 
   const achievements = [
@@ -188,14 +243,12 @@ export function UserProfile({ isOpen, onClose }: UserProfileProps) {
                   <div className="mb-2">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-bold text-amber-400">LEVEL {stats.level}</span>
-                      <span className="text-xs text-gray-400">
-                        {stats.xp.toLocaleString()} / {stats.xpToNextLevel.toLocaleString()} XP
-                      </span>
+                      <span className="text-xs text-gray-400">0 / 0 XP</span>
                     </div>
                     <div className="h-2 bg-black/40 rounded-full overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
-                        animate={{ width: `${(stats.xp / stats.xpToNextLevel) * 100}%` }}
+                        animate={{ width: '100%' }}
                         transition={{ duration: 1.5, delay: 0.3 }}
                         className="h-full bg-gradient-to-r from-amber-500 to-orange-600 rounded-full"
                       />
@@ -239,7 +292,7 @@ export function UserProfile({ isOpen, onClose }: UserProfileProps) {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
-                className="mb-6"
+                className="mb-6 relative"
               >
                 <h3
                   className="text-lg font-bold text-white mb-3"
@@ -247,40 +300,35 @@ export function UserProfile({ isOpen, onClose }: UserProfileProps) {
                 >
                   ACHIEVEMENTS
                 </h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {achievements.map((achievement, i) => (
-                    <motion.div
-                      key={achievement.id}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.5 + i * 0.1 }}
-                      className={`
-                        relative overflow-hidden rounded-xl p-4 border
-                        ${achievement.unlocked
-                          ? 'bg-gradient-to-br from-white/10 to-white/5 border-white/20'
-                          : 'bg-black/20 border-white/5 opacity-50'
-                        }
-                      `}
-                    >
-                      <achievement.icon
-                        className={`w-6 h-6 mb-2 ${
-                          achievement.unlocked
-                            ? achievement.tier === 'gold'
-                              ? 'text-amber-400'
-                              : achievement.tier === 'silver'
-                              ? 'text-gray-300'
-                              : 'text-orange-600'
-                            : 'text-gray-600'
-                        }`}
-                      />
-                      <div className="text-xs font-bold text-white mb-1">
-                        {achievement.name}
+                <div className="relative">
+                  {/* Coming Soon Overlay */}
+                  <div className="absolute inset-0 z-10 bg-black/80 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                    <div className="text-center">
+                      <Sparkles className="w-12 h-12 text-amber-500 mx-auto mb-2 animate-pulse" />
+                      <h4 className="text-2xl font-bold bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent mb-1">
+                        COMING SOON
+                      </h4>
+                      <p className="text-sm text-gray-400">Unlock amazing achievements and rewards!</p>
+                    </div>
+                  </div>
+
+                  {/* Blurred achievements grid */}
+                  <div className="grid grid-cols-2 gap-3 blur-sm">
+                    {achievements.map((achievement, i) => (
+                      <div
+                        key={achievement.id}
+                        className="relative overflow-hidden rounded-xl p-4 border bg-gradient-to-br from-white/10 to-white/5 border-white/20"
+                      >
+                        <achievement.icon className="w-6 h-6 mb-2 text-amber-400" />
+                        <div className="text-xs font-bold text-white mb-1">
+                          {achievement.name}
+                        </div>
+                        <div className="text-[10px] text-gray-400 uppercase">
+                          {achievement.tier}
+                        </div>
                       </div>
-                      <div className="text-[10px] text-gray-400 uppercase">
-                        {achievement.tier}
-                      </div>
-                    </motion.div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </motion.div>
 

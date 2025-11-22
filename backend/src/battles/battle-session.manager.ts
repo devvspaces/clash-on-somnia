@@ -1,6 +1,8 @@
 import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { BattlesGateway, BattleEvent } from './battles.gateway';
 import { SpectateGateway } from './spectate.gateway';
+import { findBestTarget, TargetInfo } from './troop-ai.util';
+import { findPathWithWallInfo, hasLineOfSight } from './pathfinding.util';
 
 export interface Troop {
   id: string;
@@ -15,6 +17,8 @@ export interface Troop {
   isAlive: boolean;
   target: Building | null;
   state: 'idle' | 'moving' | 'attacking' | 'dead';
+  currentPath?: { x: number; y: number }[]; // Current pathfinding path
+  targetInfo?: TargetInfo | null; // Smart targeting info
 }
 
 export interface Building {
@@ -141,6 +145,8 @@ export class BattleSessionManager {
       isAlive: true,
       target: null,
       state: 'idle',
+      currentPath: [],
+      targetInfo: null,
     };
 
     session.troops.push(troop);
@@ -235,23 +241,50 @@ export class BattleSessionManager {
     for (const troop of session.troops) {
       if (!troop.isAlive) continue;
 
-      // Find target if none
-      if (!troop.target || troop.target.isDestroyed) {
-        troop.target = this.findClosestBuilding(troop, session.buildings);
-        troop.state = troop.target ? 'moving' : 'idle';
+      // Find target using smart AI if none or current target is destroyed
+      if (!troop.targetInfo || !troop.target || troop.target.isDestroyed) {
+        troop.targetInfo = findBestTarget(troop, session.buildings);
+
+        if (troop.targetInfo) {
+          troop.target = troop.targetInfo.target;
+          troop.state = 'moving';
+        } else {
+          troop.target = null;
+          troop.state = 'idle';
+          continue;
+        }
       }
 
-      if (troop.target) {
-        const distance = this.getDistance(troop.position, this.getBuildingCenter(troop.target));
+      if (troop.target && troop.targetInfo) {
+        const targetCenter = this.getBuildingCenter(troop.target);
+        const distance = this.getDistance(troop.position, targetCenter);
 
-        // If in range, attack
+        // Check if archer can attack over walls
+        if (troop.type.toUpperCase() === 'ARCHER' && distance <= troop.range) {
+          const canSeeTarget = hasLineOfSight(troop.position, targetCenter, session.buildings);
+          if (canSeeTarget) {
+            // Archer can attack from current position
+            troop.state = 'attacking';
+            this.troopAttackBuilding(troop, troop.target, session, false); // false = no wall damage
+            continue;
+          }
+        }
+
+        // If in melee range, attack
         if (distance <= troop.range) {
           troop.state = 'attacking';
-          this.troopAttackBuilding(troop, troop.target, session);
+
+          // Wall Breaker explodes on impact
+          if (troop.type.toUpperCase() === 'WALL_BREAKER' && troop.target.type.toLowerCase() === 'wall') {
+            this.wallBreakerExplode(troop, troop.target, session);
+            continue;
+          }
+
+          this.troopAttackBuilding(troop, troop.target, session, troop.targetInfo.needsToDestroyWall);
         } else {
-          // Move towards target
+          // Move towards target using pathfinding
           troop.state = 'moving';
-          this.moveTroopTowards(troop, this.getBuildingCenter(troop.target), deltaTime, session);
+          this.moveTroopTowardsTarget(troop, targetCenter, deltaTime, session);
         }
       }
     }
@@ -322,6 +355,72 @@ export class BattleSessionManager {
     return closest;
   }
 
+  /**
+   * Move troop towards target with pathfinding (wall-aware)
+   */
+  private moveTroopTowardsTarget(troop: Troop, target: { x: number; y: number }, deltaTime: number, session: BattleSession) {
+    // Calculate path if needed
+    if (!troop.currentPath || troop.currentPath.length === 0) {
+      const pathResult = findPathWithWallInfo(troop, target, session.buildings);
+      troop.currentPath = pathResult.path;
+
+      // If no path and wall blocking, target the wall
+      if (pathResult.hasWallBlockage && pathResult.wallToDestroy && troop.type.toUpperCase() !== 'ARCHER') {
+        troop.target = pathResult.wallToDestroy;
+        troop.targetInfo = {
+          target: pathResult.wallToDestroy,
+          needsToDestroyWall: true,
+          wallToDestroy: pathResult.wallToDestroy,
+          canAttackOverWall: false,
+        };
+        return;
+      }
+    }
+
+    // Follow path or move directly
+    let moveTarget = target;
+    if (troop.currentPath && troop.currentPath.length > 0) {
+      const nextWaypoint = troop.currentPath[0];
+      const distanceToWaypoint = this.getDistance(troop.position, nextWaypoint);
+
+      if (distanceToWaypoint < 0.5) {
+        // Reached waypoint, remove it
+        troop.currentPath.shift();
+        if (troop.currentPath.length > 0) {
+          moveTarget = troop.currentPath[0];
+        }
+      } else {
+        moveTarget = nextWaypoint;
+      }
+    }
+
+    // Move towards target
+    const dx = moveTarget.x - troop.position.x;
+    const dy = moveTarget.y - troop.position.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance > 0.1) {
+      const moveDistance = troop.speed * deltaTime;
+      const ratio = Math.min(moveDistance / distance, 1);
+
+      const oldPosition = { ...troop.position };
+      troop.position.x += dx * ratio;
+      troop.position.y += dy * ratio;
+
+      // Broadcast movement event (throttled to every 3rd tick for performance)
+      if (Math.random() < 0.33) {
+        this.broadcastEvent(session, 'TROOP_MOVE', {
+          troopId: troop.id,
+          from: oldPosition,
+          to: troop.position,
+        });
+      }
+    }
+  }
+
+  /**
+   * Old simple movement (kept for fallback)
+   */
   private moveTroopTowards(troop: Troop, target: { x: number; y: number }, deltaTime: number, session: BattleSession) {
     const dx = target.x - troop.position.x;
     const dy = target.y - troop.position.y;
@@ -346,7 +445,7 @@ export class BattleSessionManager {
     }
   }
 
-  private troopAttackBuilding(troop: Troop, building: Building, session: BattleSession) {
+  private troopAttackBuilding(troop: Troop, building: Building, session: BattleSession, isWallAttack: boolean = false) {
     building.health -= troop.damage;
 
     if (building.health <= 0 && !building.isDestroyed) {
@@ -361,6 +460,7 @@ export class BattleSessionManager {
 
       // Troop needs new target
       troop.target = null;
+      troop.targetInfo = null;
     } else {
       // Emit attack event with projectile for ranged troops
       const isRanged = troop.range > 1;
@@ -376,6 +476,47 @@ export class BattleSessionManager {
         } : undefined,
       });
     }
+  }
+
+  /**
+   * Wall Breaker explodes on contact with wall, dealing massive damage
+   * The wall breaker dies in the explosion
+   */
+  private wallBreakerExplode(troop: Troop, wall: Building, session: BattleSession) {
+    // Deal massive damage to the wall
+    wall.health -= troop.damage;
+
+    // Check if wall is destroyed
+    if (wall.health <= 0 && !wall.isDestroyed) {
+      wall.health = 0;
+      wall.isDestroyed = true;
+
+      this.broadcastEvent(session, 'BUILDING_DESTROYED', {
+        buildingId: wall.id,
+        buildingType: wall.type,
+        position: wall.position,
+      });
+    } else {
+      this.broadcastEvent(session, 'BUILDING_ATTACK', {
+        troopId: troop.id,
+        troopType: troop.type,
+        buildingId: wall.id,
+        damage: troop.damage,
+        remainingHealth: wall.health,
+      });
+    }
+
+    // Wall Breaker dies in the explosion
+    troop.health = 0;
+    troop.isAlive = false;
+    troop.state = 'dead';
+
+    this.broadcastEvent(session, 'TROOP_DEATH', {
+      troopId: troop.id,
+      troopType: troop.type,
+      position: troop.position,
+      killedBy: 'explosion', // Died from own explosion
+    });
   }
 
   private buildingAttackTroop(building: Building, troop: Troop, session: BattleSession) {
@@ -408,8 +549,18 @@ export class BattleSessionManager {
     }
   }
 
+  /**
+   * Update destruction percentage
+   * IMPORTANT: Only non-wall buildings count towards destruction percentage
+   * Walls do NOT count - this matches Clash of Clans logic
+   */
   private updateDestructionPercentage(session: BattleSession) {
-    if (session.buildings.length === 0) {
+    // Filter out walls - only real buildings count
+    const nonWallBuildings = session.buildings.filter(
+      (b) => b.type.toLowerCase() !== 'wall'
+    );
+
+    if (nonWallBuildings.length === 0) {
       session.destructionPercentage = 100;
       return;
     }
@@ -417,7 +568,7 @@ export class BattleSessionManager {
     let totalHealth = 0;
     let remainingHealth = 0;
 
-    for (const building of session.buildings) {
+    for (const building of nonWallBuildings) {
       totalHealth += building.maxHealth;
       remainingHealth += building.health;
     }
