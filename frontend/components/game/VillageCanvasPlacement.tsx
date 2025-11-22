@@ -21,9 +21,11 @@ interface VillageCanvasPlacementProps {
   };
 }
 
-const GRID_SIZE = 40;
+const GRID_WIDTH = 80; // 80 columns
+const GRID_HEIGHT = 40; // 40 rows (2:1 ratio)
 const TILE_SIZE = 15;
-const CANVAS_SIZE = GRID_SIZE * TILE_SIZE;
+const CANVAS_WIDTH = GRID_WIDTH * TILE_SIZE; // 1200px
+const CANVAS_HEIGHT = GRID_HEIGHT * TILE_SIZE; // 600px
 const BACKGROUND_IMAGE = '/assets/bg/map001.svg';
 
 export function VillageCanvasPlacement({
@@ -75,8 +77,8 @@ export function VillageCanvasPlacement({
   // useEffect(() => {
   //   if (buildings.length > 0 && decorations.length === 0) {
   //     const generatedDecorations = DecorationManager.generateDecorations({
-  //       gridWidth: GRID_SIZE,
-  //       gridHeight: GRID_SIZE,
+  //       gridWidth: GRID_WIDTH,
+  //       gridHeight: GRID_HEIGHT,
   //       density: 0.12, // 12% of tiles have decorations
   //       seed: 42, // Consistent seed for same layout
   //       buildings,
@@ -91,8 +93,8 @@ export function VillageCanvasPlacement({
     if (!canvasRef.current || appRef.current) return;
 
     const app = new PIXI.Application({
-      width: CANVAS_SIZE,
-      height: CANVAS_SIZE,
+      width: CANVAS_WIDTH,
+      height: CANVAS_HEIGHT,
       backgroundAlpha: 0, // Transparent background
       antialias: true,
     });
@@ -105,22 +107,22 @@ export function VillageCanvasPlacement({
 
     // Add semi-transparent white background to differentiate play area
     gridGraphics.beginFill(0xffffff, 0.1); // White with 10% opacity
-    gridGraphics.drawRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    gridGraphics.drawRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
     gridGraphics.endFill();
 
     // Draw grid lines
     gridGraphics.lineStyle(1, 0x000000, 0.3); // Black lines with 30% opacity
 
     // Vertical lines
-    for (let x = 0; x <= GRID_SIZE; x++) {
+    for (let x = 0; x <= GRID_WIDTH; x++) {
       gridGraphics.moveTo(x * TILE_SIZE, 0);
-      gridGraphics.lineTo(x * TILE_SIZE, CANVAS_SIZE);
+      gridGraphics.lineTo(x * TILE_SIZE, CANVAS_HEIGHT);
     }
 
     // Horizontal lines
-    for (let y = 0; y <= GRID_SIZE; y++) {
+    for (let y = 0; y <= GRID_HEIGHT; y++) {
       gridGraphics.moveTo(0, y * TILE_SIZE);
-      gridGraphics.lineTo(CANVAS_SIZE, y * TILE_SIZE);
+      gridGraphics.lineTo(CANVAS_WIDTH, y * TILE_SIZE);
     }
 
     app.stage.addChildAt(gridGraphics, 0);
@@ -842,7 +844,7 @@ function checkPlacementValid(
   buildings: Building[],
   excludeBuildingId: string | null,
 ): boolean {
-  if (x < 0 || y < 0 || x + width > GRID_SIZE || y + height > GRID_SIZE) {
+  if (x < 0 || y < 0 || x + width > GRID_WIDTH || y + height > GRID_HEIGHT) {
     return false;
   }
 
@@ -883,7 +885,7 @@ function checkMultiPlacementValid(
     const newY = wall.positionY + deltaY;
 
     // Check bounds
-    if (newX < 0 || newY < 0 || newX + 1 > GRID_SIZE || newY + 1 > GRID_SIZE) {
+    if (newX < 0 || newY < 0 || newX + 1 > GRID_WIDTH || newY + 1 > GRID_HEIGHT) {
       return false;
     }
 

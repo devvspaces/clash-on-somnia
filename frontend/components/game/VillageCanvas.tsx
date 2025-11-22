@@ -13,9 +13,11 @@ interface VillageCanvasProps {
   onBuildingClick?: (building: Building) => void;
 }
 
-const GRID_SIZE = 40; // 40x40 grid
+const GRID_WIDTH = 80; // 80 columns
+const GRID_HEIGHT = 40; // 40 rows (2:1 ratio)
 const TILE_SIZE = 15; // pixels per tile
-const CANVAS_SIZE = GRID_SIZE * TILE_SIZE; // 600px
+const CANVAS_WIDTH = GRID_WIDTH * TILE_SIZE; // 1200px
+const CANVAS_HEIGHT = GRID_HEIGHT * TILE_SIZE; // 600px
 const BACKGROUND_IMAGE = '/assets/bg/map001.svg';
 
 export function VillageCanvas({ buildings, onBuildingClick }: VillageCanvasProps) {
@@ -47,8 +49,8 @@ export function VillageCanvas({ buildings, onBuildingClick }: VillageCanvasProps
   // useEffect(() => {
   //   if (buildings.length > 0 && decorations.length === 0) {
   //     const generatedDecorations = DecorationManager.generateDecorations({
-  //       gridWidth: GRID_SIZE,
-  //       gridHeight: GRID_SIZE,
+  //       gridWidth: GRID_WIDTH,
+  //       gridHeight: GRID_HEIGHT,
   //       density: 0.12,
   //       seed: 42,
   //       buildings,
@@ -63,8 +65,8 @@ export function VillageCanvas({ buildings, onBuildingClick }: VillageCanvasProps
 
     // Initialize Pixi application
     const app = new PIXI.Application({
-      width: CANVAS_SIZE,
-      height: CANVAS_SIZE,
+      width: CANVAS_WIDTH,
+      height: CANVAS_HEIGHT,
       backgroundAlpha: 0, // Transparent background
       antialias: true,
     });
@@ -77,22 +79,22 @@ export function VillageCanvas({ buildings, onBuildingClick }: VillageCanvasProps
 
     // Add semi-transparent white background to differentiate play area
     gridGraphics.beginFill(0xffffff, 0.1); // White with 10% opacity
-    gridGraphics.drawRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    gridGraphics.drawRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
     gridGraphics.endFill();
 
     // Draw grid lines
     gridGraphics.lineStyle(1, 0x000000, 0.3); // Black lines with 30% opacity
 
     // Vertical lines
-    for (let x = 0; x <= GRID_SIZE; x++) {
+    for (let x = 0; x <= GRID_WIDTH; x++) {
       gridGraphics.moveTo(x * TILE_SIZE, 0);
-      gridGraphics.lineTo(x * TILE_SIZE, CANVAS_SIZE);
+      gridGraphics.lineTo(x * TILE_SIZE, CANVAS_HEIGHT);
     }
 
     // Horizontal lines
-    for (let y = 0; y <= GRID_SIZE; y++) {
+    for (let y = 0; y <= GRID_HEIGHT; y++) {
       gridGraphics.moveTo(0, y * TILE_SIZE);
-      gridGraphics.lineTo(CANVAS_SIZE, y * TILE_SIZE);
+      gridGraphics.lineTo(CANVAS_WIDTH, y * TILE_SIZE);
     }
 
     app.stage.addChild(gridGraphics);
