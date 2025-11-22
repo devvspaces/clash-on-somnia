@@ -249,7 +249,7 @@ export default function VillagePage() {
       {/* Army Training Slide Panel */}
       {showArmyTraining && (
         <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm">
-          <div className="h-full w-full max-w-2xl animate-slide-in-left bg-gray-900 shadow-2xl overflow-auto">
+          <div className="h-full w-full max-w-2xl ml-auto animate-slide-in-right bg-gray-900 shadow-2xl overflow-auto p-6">
             <ArmyTraining onClose={() => setShowArmyTraining(false)} />
           </div>
         </div>

@@ -33,22 +33,22 @@ export interface CursorConfig {
  */
 export const BUILDING_SPRITES: Record<BuildingType, SpriteConfig> = {
   [BuildingType.TOWN_HALL]: {
-    path: '/assets/kenney_tiny-town/Tiles/tile_0062.png', // Large stone building with dark roof
+    path: '/assets/townhall.png', // Custom town hall sprite
     anchor: { x: 0.5, y: 0.5 },
     scaleMultiplier: 1.0,
-    nativeSize: { width: 16, height: 16 },
+    nativeSize: { width: 128, height: 128 },
   },
   [BuildingType.GOLD_MINE]: {
-    path: '/assets/kenney_tiny-town/Tiles/tile_0091.png', // Resource building with door
+    path: '/assets/gold-mine.png', // Custom gold mine sprite
     anchor: { x: 0.5, y: 0.5 },
     scaleMultiplier: 1.0,
-    nativeSize: { width: 16, height: 16 },
+    nativeSize: { width: 128, height: 128 },
   },
   [BuildingType.ELIXIR_COLLECTOR]: {
-    path: '/assets/kenney_tiny-town/Tiles/tile_0092.png', // Orange dome resource building
+    path: '/assets/elixir-mine.png', // Custom elixir mine sprite
     anchor: { x: 0.5, y: 0.5 },
     scaleMultiplier: 1.0,
-    nativeSize: { width: 16, height: 16 },
+    nativeSize: { width: 128, height: 128 },
   },
   [BuildingType.GOLD_STORAGE]: {
     path: '/assets/kenney_tiny-town/Tiles/tile_0090.png', // Storage building with red door
@@ -82,10 +82,10 @@ export const BUILDING_SPRITES: Record<BuildingType, SpriteConfig> = {
     nativeSize: { width: 16, height: 16 },
   },
   [BuildingType.ARMY_CAMP]: {
-    path: '/assets/kenney_tiny-town/Tiles/tile_0095.png', // Red tent/camp structure
+    path: '/assets/army-camp.png', // Custom army camp sprite
     anchor: { x: 0.5, y: 0.5 },
     scaleMultiplier: 1.0,
-    nativeSize: { width: 16, height: 16 },
+    nativeSize: { width: 128, height: 128 },
   },
   [BuildingType.BARRACKS]: {
     path: '/assets/kenney_tiny-town/Tiles/tile_0080.png', // Small building with red roof

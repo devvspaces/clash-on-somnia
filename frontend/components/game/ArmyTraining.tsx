@@ -126,7 +126,7 @@ export function ArmyTraining({ onClose }: ArmyTrainingProps) {
 
   if (isLoading) {
     return (
-      <div className="text-center py-8">Loading army data...</div>
+      <div className="text-center py-12 text-xl text-amber-400">Loading army data...</div>
     );
   }
 
@@ -137,28 +137,28 @@ export function ArmyTraining({ onClose }: ArmyTrainingProps) {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center border-b-2 border-amber-500 pb-4">
         <div>
-          <h2 className="text-2xl font-bold">Army Camp</h2>
-          <p className="text-sm text-muted-foreground">Train troops and manage your army</p>
+          <h2 className="text-3xl font-bold text-amber-400">Army Camp</h2>
+          <p className="text-sm text-gray-400">Train troops and manage your army</p>
         </div>
-        <Button variant="outline" onClick={onClose}>
+        <Button variant="destructive" onClick={onClose} className="bg-red-600 hover:bg-red-700">
           <X className="mr-2 h-4 w-4" />
-          Close Army
+          Close
         </Button>
       </div>
 
       {/* Army Capacity */}
-      <Card>
+      <Card className="bg-gray-800/90 border-2 border-amber-600/50">
         <CardHeader>
-          <CardTitle className="text-base">Army Capacity</CardTitle>
-          <CardDescription className="text-sm">
+          <CardTitle className="text-lg text-amber-300">Army Capacity</CardTitle>
+          <CardDescription className="text-base text-gray-300 font-numbers">
             {totalHousingSpace} / {maxCapacity} troops
             {queueHousingSpace > 0 && ` (+${queueHousingSpace} in training)`}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Progress value={(totalHousingSpace / maxCapacity) * 100} className="h-3" />
+          <Progress value={(totalHousingSpace / maxCapacity) * 100} className="h-4 bg-gray-700" />
         </CardContent>
       </Card>
 
@@ -167,9 +167,9 @@ export function ArmyTraining({ onClose }: ArmyTrainingProps) {
         <div className="space-y-4">
           {/* Training Queue */}
           {trainingQueue.length > 0 && (
-            <Card>
+            <Card className="bg-gray-800/90 border-2 border-blue-600/50">
               <CardHeader>
-                <CardTitle className="text-base">Training Queue ({trainingQueue.length})</CardTitle>
+                <CardTitle className="text-lg text-blue-300">Training Queue ({trainingQueue.length})</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 <AnimatePresence>
@@ -179,17 +179,17 @@ export function ArmyTraining({ onClose }: ArmyTrainingProps) {
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
-                      className="flex items-center gap-3 p-3 border rounded-lg"
+                      className="flex items-center gap-3 p-3 bg-gray-900/50 border-2 border-gray-700 rounded-lg hover:border-blue-500/50 transition-colors"
                     >
-                      <span className="text-2xl">{item.troopConfig.icon}</span>
+                      <span className="text-3xl">{item.troopConfig.icon}</span>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-sm">{item.troopConfig.name}</h3>
-                          <Badge variant="secondary" className="text-xs">#{item.queuePosition + 1}</Badge>
+                          <h3 className="font-semibold text-base text-white">{item.troopConfig.name}</h3>
+                          <Badge variant="secondary" className="text-xs bg-blue-600 text-white">#{item.queuePosition + 1}</Badge>
                         </div>
                         <div className="mt-1 space-y-1">
-                          <Progress value={calculateProgress(item)} className="h-1.5" />
-                          <p className="text-xs text-muted-foreground">
+                          <Progress value={calculateProgress(item)} className="h-2 bg-gray-700" />
+                          <p className="text-xs text-gray-400 font-numbers">
                             {getTimeRemaining(item.completesAt)} remaining
                           </p>
                         </div>
@@ -198,6 +198,7 @@ export function ArmyTraining({ onClose }: ArmyTrainingProps) {
                         variant="destructive"
                         size="sm"
                         onClick={() => handleCancelTraining(item.id)}
+                        className="bg-red-600 hover:bg-red-700"
                       >
                         Cancel
                       </Button>
@@ -209,23 +210,23 @@ export function ArmyTraining({ onClose }: ArmyTrainingProps) {
           )}
 
           {/* Current Army */}
-          <Card>
+          <Card className="bg-gray-800/90 border-2 border-green-600/50">
             <CardHeader>
-              <CardTitle className="text-base">Your Army</CardTitle>
+              <CardTitle className="text-lg text-green-300">Your Army</CardTitle>
             </CardHeader>
             <CardContent>
               {army.length === 0 ? (
-                <p className="text-center text-sm text-muted-foreground py-4">
+                <p className="text-center text-base text-gray-400 py-6">
                   No troops trained yet
                 </p>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-3">
                   {army.map((troop) => (
-                    <div key={troop.id} className="flex items-center gap-2 p-2 border rounded">
-                      <span className="text-2xl">{troop.troopConfig.icon}</span>
+                    <div key={troop.id} className="flex items-center gap-3 p-3 bg-gray-900/50 border-2 border-gray-700 rounded-lg hover:border-green-500/50 transition-colors">
+                      <span className="text-3xl">{troop.troopConfig.icon}</span>
                       <div className="min-w-0">
-                        <p className="font-semibold text-sm truncate">{troop.troopConfig.name}</p>
-                        <p className="text-lg font-bold text-primary">{troop.count}x</p>
+                        <p className="font-semibold text-sm text-white truncate">{troop.troopConfig.name}</p>
+                        <p className="text-xl font-bold text-green-400 font-numbers">{troop.count}x</p>
                       </div>
                     </div>
                   ))}
@@ -236,9 +237,9 @@ export function ArmyTraining({ onClose }: ArmyTrainingProps) {
         </div>
 
         {/* Right Column - Train Troops */}
-        <Card>
+        <Card className="bg-gray-800/90 border-2 border-purple-600/50">
           <CardHeader>
-            <CardTitle className="text-base">Train Troops</CardTitle>
+            <CardTitle className="text-lg text-purple-300">Train Troops</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -247,29 +248,30 @@ export function ArmyTraining({ onClose }: ArmyTrainingProps) {
                 const hasSpace = totalHousingSpace + queueHousingSpace + troop.housingSpace <= maxCapacity;
 
                 return (
-                  <div key={troop.type} className="border rounded-lg p-3">
-                    <div className="flex items-start gap-3">
-                      <span className="text-3xl">{troop.icon}</span>
+                  <div key={troop.type} className="bg-gray-900/50 border-2 border-gray-700 rounded-lg p-4 hover:border-purple-500/50 transition-colors">
+                    <div className="flex items-start gap-4">
+                      <span className="text-4xl">{troop.icon}</span>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-sm">{troop.name}</h3>
-                        <p className="text-xs text-muted-foreground mb-2">{troop.description}</p>
+                        <h3 className="font-semibold text-base text-white">{troop.name}</h3>
+                        <p className="text-sm text-gray-400 mb-3">{troop.description}</p>
 
-                        <div className="grid grid-cols-2 gap-1 text-xs mb-2">
-                          <div><span className="text-muted-foreground">HP:</span> {troop.health}</div>
-                          <div><span className="text-muted-foreground">DMG:</span> {troop.damage}</div>
-                          <div><span className="text-muted-foreground">Range:</span> {troop.range}</div>
-                          <div><span className="text-muted-foreground">Space:</span> {troop.housingSpace}</div>
+                        <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                          <div className="text-gray-300"><span className="text-gray-500">HP:</span> <span className="font-numbers text-green-400">{troop.health}</span></div>
+                          <div className="text-gray-300"><span className="text-gray-500">DMG:</span> <span className="font-numbers text-red-400">{troop.damage}</span></div>
+                          <div className="text-gray-300"><span className="text-gray-500">Range:</span> <span className="font-numbers text-blue-400">{troop.range}</span></div>
+                          <div className="text-gray-300"><span className="text-gray-500">Space:</span> <span className="font-numbers text-yellow-400">{troop.housingSpace}</span></div>
                         </div>
 
                         <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-xs font-semibold">💧 {troop.cost.elixir}</p>
-                            <p className="text-xs text-muted-foreground">⏱️ {troop.trainingTime}s</p>
+                          <div className="space-y-1">
+                            <p className="text-sm font-bold text-cyan-400 font-numbers">💧 {troop.cost.elixir}</p>
+                            <p className="text-xs text-gray-400 font-numbers">⏱️ {troop.trainingTime}s</p>
                           </div>
                           <Button
                             onClick={() => handleTrainTroop(troop.type)}
                             disabled={!canAfford || !hasSpace}
                             size="sm"
+                            className={canAfford && hasSpace ? "bg-purple-600 hover:bg-purple-700" : ""}
                           >
                             {!hasSpace ? 'Full' : !canAfford ? 'Not enough' : 'Train'}
                           </Button>
