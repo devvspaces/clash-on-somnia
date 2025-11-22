@@ -551,14 +551,14 @@ export function VillageCanvasPlacement({
   }, [placementMode, buildings]);
 
   return (
-    <div className="relative flex items-center justify-center rounded-lg border-4 border-amber-600 bg-green-800 p-4 shadow-2xl">
+    <div className="relative flex h-full w-full items-center justify-center">
       <div
         ref={canvasRef}
-        className="rounded-md shadow-lg"
+        className=""
         style={{ cursor: placementMode?.active ? 'crosshair' : 'default' }}
       />
       {placementMode?.active && (
-        <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-md bg-black/70 px-4 py-2 text-white">
+        <div className="absolute left-1/2 top-20 -translate-x-1/2 rounded-md bg-black/70 px-4 py-2 text-white shadow-xl">
           <p className="text-sm">
             {placementMode.buildingType === BuildingType.WALL
               ? 'Click to place walls • Cyan = suggested • Right-click or ESC to cancel'
