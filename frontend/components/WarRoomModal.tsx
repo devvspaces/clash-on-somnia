@@ -145,25 +145,24 @@ export function WarRoomModal({ isOpen, onClose }: WarRoomModalProps) {
     return (
       <Card
         key={battle.id}
-        className="overflow-hidden transition-all hover:shadow-md"
+        className={`overflow-hidden transition-all bg-gray-800/90 border-2 ${isVictory ? 'border-green-600/50 hover:border-green-500' : 'border-red-600/50 hover:border-red-500'}`}
       >
         <CardContent className="p-3">
           {/* Header with Outcome Badge */}
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               {isVictory ? (
-                <Trophy className="h-5 w-5 text-green-500" />
+                <Trophy className="h-5 w-5 text-green-400" />
               ) : (
-                <Skull className="h-5 w-5 text-red-500" />
+                <Skull className="h-5 w-5 text-red-400" />
               )}
               <div>
                 <Badge
-                  variant={isVictory ? 'default' : 'destructive'}
-                  className="text-xs px-2 py-0.5"
+                  className={`text-xs px-2 py-0.5 ${isVictory ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}
                 >
                   {isVictory ? 'Victory' : 'Defeat'}
                 </Badge>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
+                <p className="text-[10px] text-gray-400 mt-0.5">
                   {formatDistanceToNow(new Date(battle.createdAt), { addSuffix: true })}
                 </p>
               </div>
@@ -189,31 +188,31 @@ export function WarRoomModal({ isOpen, onClose }: WarRoomModalProps) {
             <div className="text-center">
               {isDefense ? (
                 <>
-                  <Swords className="h-5 w-5 mx-auto mb-1 text-red-500" />
-                  <p className="font-bold text-xs">Attacker</p>
+                  <Swords className="h-5 w-5 mx-auto mb-1 text-red-400" />
+                  <p className="font-bold text-xs text-gray-300">Attacker</p>
                 </>
               ) : (
                 <>
-                  <Shield className="h-5 w-5 mx-auto mb-1 text-blue-500" />
-                  <p className="font-bold text-xs">You</p>
+                  <Shield className="h-5 w-5 mx-auto mb-1 text-blue-400" />
+                  <p className="font-bold text-xs text-gray-300">You</p>
                 </>
               )}
             </div>
 
             <div className="text-center">
-              <Zap className="h-6 w-6 mx-auto text-yellow-500" />
+              <Zap className="h-6 w-6 mx-auto text-yellow-400" />
             </div>
 
             <div className="text-center">
               {isDefense ? (
                 <>
-                  <Shield className="h-5 w-5 mx-auto mb-1 text-blue-500" />
-                  <p className="font-bold text-xs">You</p>
+                  <Shield className="h-5 w-5 mx-auto mb-1 text-blue-400" />
+                  <p className="font-bold text-xs text-gray-300">You</p>
                 </>
               ) : (
                 <>
-                  <Swords className="h-5 w-5 mx-auto mb-1 text-red-500" />
-                  <p className="font-bold text-xs">Defender</p>
+                  <Swords className="h-5 w-5 mx-auto mb-1 text-red-400" />
+                  <p className="font-bold text-xs text-gray-300">Defender</p>
                 </>
               )}
             </div>
@@ -221,38 +220,38 @@ export function WarRoomModal({ isOpen, onClose }: WarRoomModalProps) {
 
           {/* Destruction Bar */}
           <div className="space-y-1 mb-2">
-            <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center justify-between text-xs text-gray-300">
               <span className="flex items-center gap-1">
                 <Target className="h-3 w-3" />
                 Destruction
               </span>
-              <span className="text-sm font-bold">
+              <span className="text-sm font-bold text-white font-numbers">
                 {battle.destructionPercentage}%
               </span>
             </div>
             <Progress
               value={battle.destructionPercentage}
-              className="h-2"
+              className="h-2 bg-gray-700"
             />
           </div>
 
           {/* Loot Display */}
           {(battle.lootGold > 0 || battle.lootElixir > 0) && (
             <div className="grid grid-cols-2 gap-2">
-              <div className="flex items-center gap-1.5 p-2 bg-muted rounded">
-                <Coins className="h-4 w-4 text-yellow-500" />
+              <div className="flex items-center gap-1.5 p-2 bg-gray-900/50 border border-yellow-600/30 rounded">
+                <Coins className="h-4 w-4 text-yellow-400" />
                 <div>
-                  <p className="text-[10px] text-muted-foreground">Gold</p>
-                  <p className="font-bold text-yellow-500 text-xs">
+                  <p className="text-[10px] text-gray-400">Gold</p>
+                  <p className="font-bold text-yellow-400 text-xs font-numbers">
                     {isDefense ? '-' : '+'}{battle.lootGold.toLocaleString()}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 p-2 bg-muted rounded">
-                <Droplet className="h-4 w-4 text-purple-500" />
+              <div className="flex items-center gap-1.5 p-2 bg-gray-900/50 border border-cyan-600/30 rounded">
+                <Droplet className="h-4 w-4 text-cyan-400" />
                 <div>
-                  <p className="text-[10px] text-muted-foreground">Elixir</p>
-                  <p className="font-bold text-purple-500 text-xs">
+                  <p className="text-[10px] text-gray-400">Elixir</p>
+                  <p className="font-bold text-cyan-400 text-xs font-numbers">
                     {isDefense ? '-' : '+'}{battle.lootElixir.toLocaleString()}
                   </p>
                 </div>
@@ -268,18 +267,18 @@ export function WarRoomModal({ isOpen, onClose }: WarRoomModalProps) {
     return (
       <Card
         key={battle.id}
-        className="overflow-hidden border-orange-500"
+        className="overflow-hidden bg-gray-800/90 border-2 border-orange-500 hover:border-orange-400"
       >
         <CardContent className="p-3">
           {/* Live Indicator */}
           <div className="flex items-center justify-between mb-2">
-            <Badge variant="destructive" className="text-xs px-2 py-0.5 animate-pulse">
+            <Badge className="text-xs px-2 py-0.5 animate-pulse bg-red-600 text-white">
               LIVE NOW
             </Badge>
             <Button
               size="sm"
               onClick={() => router.push(`/battle/${battle.id}/spectate?returnTo=/village`)}
-              className="h-7 text-xs px-2"
+              className="h-7 text-xs px-2 bg-orange-600 hover:bg-orange-700"
             >
               <Eye className="mr-1 h-3 w-3" />
               Spectate
@@ -289,24 +288,24 @@ export function WarRoomModal({ isOpen, onClose }: WarRoomModalProps) {
           {/* Battle Info */}
           <div className="flex items-center justify-between mb-2">
             <div>
-              <p className="font-bold text-xs">{battle.attackerVillage.name}</p>
-              <p className="text-[10px] text-muted-foreground">Attacker</p>
+              <p className="font-bold text-xs text-white">{battle.attackerVillage.name}</p>
+              <p className="text-[10px] text-gray-400">Attacker</p>
             </div>
-            <Swords className="h-5 w-5 text-orange-500" />
+            <Swords className="h-5 w-5 text-orange-400" />
             <div className="text-right">
-              <p className="font-bold text-xs">{battle.defenderVillage.name}</p>
-              <p className="text-[10px] text-muted-foreground">Defender</p>
+              <p className="font-bold text-xs text-white">{battle.defenderVillage.name}</p>
+              <p className="text-[10px] text-gray-400">Defender</p>
             </div>
           </div>
 
           {/* Current Stats */}
           {battle.destructionPercentage > 0 && (
             <div>
-              <div className="flex items-center justify-between text-xs mb-1">
+              <div className="flex items-center justify-between text-xs text-gray-300 mb-1">
                 <span>Destruction</span>
-                <span className="font-bold">{battle.destructionPercentage}%</span>
+                <span className="font-bold text-white font-numbers">{battle.destructionPercentage}%</span>
               </div>
-              <Progress value={battle.destructionPercentage} className="h-1.5" />
+              <Progress value={battle.destructionPercentage} className="h-1.5 bg-gray-700" />
             </div>
           )}
         </CardContent>
@@ -321,15 +320,15 @@ export function WarRoomModal({ isOpen, onClose }: WarRoomModalProps) {
       width="600px"
     >
       {/* Header */}
-      <div className="flex items-center gap-2 mb-6">
-        <Shield className="h-6 w-6 text-blue-500" />
-        <h2 className="text-2xl font-bold">War Room</h2>
-        <Swords className="h-6 w-6 text-red-500" />
+      <div className="flex items-center justify-center gap-3 mb-6 pb-4 border-b-2 border-amber-500">
+        <Shield className="h-7 w-7 text-blue-400" />
+        <h2 className="text-3xl font-bold text-amber-400">War Room</h2>
+        <Swords className="h-7 w-7 text-red-400" />
       </div>
 
       {/* Error Alert */}
       {error && (
-        <Alert variant="destructive" className="mb-4">
+        <Alert variant="destructive" className="mb-4 bg-red-900/20 border-red-600 text-red-400">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
@@ -337,16 +336,16 @@ export function WarRoomModal({ isOpen, onClose }: WarRoomModalProps) {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="defenses" className="text-sm">
+        <TabsList className="grid w-full grid-cols-3 bg-gray-800 border border-gray-700">
+          <TabsTrigger value="defenses" className="text-sm data-[state=active]:bg-blue-600 data-[state=active]:text-white">
             <Shield className="mr-1.5 h-4 w-4" />
             Defenses ({defenses.length})
           </TabsTrigger>
-          <TabsTrigger value="live" className="text-sm">
+          <TabsTrigger value="live" className="text-sm data-[state=active]:bg-orange-600 data-[state=active]:text-white">
             <Bell className="mr-1.5 h-4 w-4" />
             Live ({liveBattles.length})
           </TabsTrigger>
-          <TabsTrigger value="attacks" className="text-sm">
+          <TabsTrigger value="attacks" className="text-sm data-[state=active]:bg-red-600 data-[state=active]:text-white">
             <Swords className="mr-1.5 h-4 w-4" />
             Attacks ({attacks.length})
           </TabsTrigger>
@@ -356,15 +355,15 @@ export function WarRoomModal({ isOpen, onClose }: WarRoomModalProps) {
         <TabsContent value="defenses" className="space-y-3 mt-0">
           {isLoading ? (
             <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="mt-3 text-sm text-muted-foreground">Loading defenses...</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto"></div>
+              <p className="mt-3 text-sm text-gray-400">Loading defenses...</p>
             </div>
           ) : defenses.length === 0 ? (
-            <Card>
+            <Card className="bg-gray-800/90 border-2 border-gray-700">
               <CardContent className="py-8 text-center">
-                <Shield className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-                <h3 className="text-base font-semibold mb-1">No attacks yet</h3>
-                <p className="text-sm text-muted-foreground">
+                <Shield className="h-12 w-12 mx-auto mb-3 text-blue-400" />
+                <h3 className="text-base font-semibold mb-1 text-white">No attacks yet</h3>
+                <p className="text-sm text-gray-400">
                   Your defenses remain untested.
                 </p>
               </CardContent>
@@ -378,15 +377,15 @@ export function WarRoomModal({ isOpen, onClose }: WarRoomModalProps) {
         <TabsContent value="live" className="space-y-3 mt-0">
           {isLoading ? (
             <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="mt-3 text-sm text-muted-foreground">Scanning for battles...</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-400 mx-auto"></div>
+              <p className="mt-3 text-sm text-gray-400">Scanning for battles...</p>
             </div>
           ) : liveBattles.length === 0 ? (
-            <Card>
+            <Card className="bg-gray-800/90 border-2 border-gray-700">
               <CardContent className="py-8 text-center">
-                <Bell className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-                <h3 className="text-base font-semibold mb-1">No live attacks</h3>
-                <p className="text-sm text-muted-foreground">
+                <Bell className="h-12 w-12 mx-auto mb-3 text-orange-400" />
+                <h3 className="text-base font-semibold mb-1 text-white">No live attacks</h3>
+                <p className="text-sm text-gray-400">
                   You'll see real-time battles here!
                 </p>
               </CardContent>
@@ -400,15 +399,15 @@ export function WarRoomModal({ isOpen, onClose }: WarRoomModalProps) {
         <TabsContent value="attacks" className="space-y-3 mt-0">
           {isLoading ? (
             <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="mt-3 text-sm text-muted-foreground">Loading attacks...</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-400 mx-auto"></div>
+              <p className="mt-3 text-sm text-gray-400">Loading attacks...</p>
             </div>
           ) : attacks.length === 0 ? (
-            <Card>
+            <Card className="bg-gray-800/90 border-2 border-gray-700">
               <CardContent className="py-8 text-center">
-                <Swords className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-                <h3 className="text-base font-semibold mb-1">No attacks launched</h3>
-                <p className="text-sm text-muted-foreground">
+                <Swords className="h-12 w-12 mx-auto mb-3 text-red-400" />
+                <h3 className="text-base font-semibold mb-1 text-white">No attacks launched</h3>
+                <p className="text-sm text-gray-400">
                   Attack other villages to gain resources!
                 </p>
               </CardContent>

@@ -114,8 +114,8 @@ export function BattlePreparation({ onBattleComplete, onStartRealtimeBattle, onC
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-12 space-y-4">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="text-lg text-muted-foreground">Finding opponent and loading your army...</p>
+        <Loader2 className="h-12 w-12 animate-spin text-amber-400" />
+        <p className="text-lg text-gray-400">Finding opponent and loading your army...</p>
       </div>
     );
   }
@@ -123,16 +123,16 @@ export function BattlePreparation({ onBattleComplete, onStartRealtimeBattle, onC
   if (error && !opponent) {
     return (
       <div className="space-y-4">
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="bg-red-900/20 border-red-600 text-red-400">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
         <div className="flex gap-2">
-          <Button onClick={loadData} variant="outline">
+          <Button onClick={loadData} className="bg-amber-600 hover:bg-amber-700">
             <Loader2 className="mr-2 h-4 w-4" />
             Try Again
           </Button>
-          <Button onClick={onCancel} variant="ghost">
+          <Button onClick={onCancel} variant="destructive" className="bg-red-600 hover:bg-red-700">
             Cancel
           </Button>
         </div>
@@ -141,23 +141,23 @@ export function BattlePreparation({ onBattleComplete, onStartRealtimeBattle, onC
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between border-b-2 border-red-500 pb-4">
         <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
+          <h2 className="text-3xl font-bold flex items-center gap-2 text-red-400">
             <Swords className="h-6 w-6" />
             Battle Preparation
           </h2>
-          <p className="text-sm text-muted-foreground">Select troops to deploy in battle</p>
+          <p className="text-sm text-gray-400">Select troops to deploy in battle</p>
         </div>
-        <Button variant="outline" onClick={onCancel}>
+        <Button variant="destructive" onClick={onCancel} className="bg-red-600 hover:bg-red-700">
           Cancel
         </Button>
       </div>
 
       {error && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="bg-red-900/20 border-red-600 text-red-400">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
@@ -165,21 +165,21 @@ export function BattlePreparation({ onBattleComplete, onStartRealtimeBattle, onC
 
       {/* Opponent Info */}
       {opponent && (
-        <Card>
+        <Card className="bg-gray-800/90 border-2 border-orange-600/50">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
+            <CardTitle className="flex items-center gap-2 text-lg text-orange-300">
               <Target className="h-5 w-5" />
               Target Village
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-4">
-              <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
-                <Users className="h-8 w-8 text-muted-foreground" />
+              <div className="h-16 w-16 rounded-full bg-gray-900 border-2 border-orange-500 flex items-center justify-center">
+                <Users className="h-8 w-8 text-orange-400" />
               </div>
               <div>
-                <p className="font-semibold">Enemy Village</p>
-                <p className="text-sm text-muted-foreground">Ready to attack</p>
+                <p className="font-semibold text-white">Enemy Village</p>
+                <p className="text-sm text-gray-400">Ready to attack</p>
               </div>
             </div>
           </CardContent>
@@ -187,34 +187,34 @@ export function BattlePreparation({ onBattleComplete, onStartRealtimeBattle, onC
       )}
 
       {/* Troop Selection */}
-      <Card>
+      <Card className="bg-gray-800/90 border-2 border-purple-600/50">
         <CardHeader>
-          <CardTitle className="text-base">Deploy Troops</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-lg text-purple-300">Deploy Troops</CardTitle>
+          <CardDescription className="text-gray-300 font-numbers">
             Selected: {getTotalSelectedTroops()} troops
           </CardDescription>
         </CardHeader>
         <CardContent>
           {army.length === 0 ? (
-            <Alert>
+            <Alert className="bg-yellow-900/20 border-yellow-600 text-yellow-400">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 You don't have any troops! Train some troops before attacking.
               </AlertDescription>
             </Alert>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {army.map((troop) => {
                 const selected = selectedTroops.find((t) => t.type === troop.troopType)?.count || 0;
                 const available = troop.count;
 
                 return (
-                  <div key={troop.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div key={troop.id} className="flex items-center justify-between p-4 bg-gray-900/50 border-2 border-gray-700 rounded-lg hover:border-purple-500/50 transition-colors">
                     <div className="flex items-center gap-3">
                       <span className="text-3xl">{troop.troopConfig.icon}</span>
                       <div>
-                        <p className="font-semibold">{troop.troopConfig.name}</p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="font-semibold text-white">{troop.troopConfig.name}</p>
+                        <p className="text-sm text-gray-400 font-numbers">
                           Available: {available}
                         </p>
                       </div>
@@ -226,10 +226,11 @@ export function BattlePreparation({ onBattleComplete, onStartRealtimeBattle, onC
                         size="sm"
                         onClick={() => decrementTroop(troop.troopType)}
                         disabled={selected === 0}
+                        className="bg-gray-800 hover:bg-gray-700 border-gray-600"
                       >
                         -
                       </Button>
-                      <span className="min-w-[3rem] text-center font-bold text-lg">
+                      <span className="min-w-[3rem] text-center font-bold text-lg text-purple-400 font-numbers">
                         {selected}
                       </span>
                       <Button
@@ -237,14 +238,15 @@ export function BattlePreparation({ onBattleComplete, onStartRealtimeBattle, onC
                         size="sm"
                         onClick={() => incrementTroop(troop.troopType)}
                         disabled={selected >= available}
+                        className="bg-gray-800 hover:bg-gray-700 border-gray-600"
                       >
                         +
                       </Button>
                       <Button
-                        variant="secondary"
                         size="sm"
                         onClick={() => selectAllTroops(troop.troopType)}
                         disabled={selected === available}
+                        className="bg-purple-600 hover:bg-purple-700"
                       >
                         All
                       </Button>
@@ -258,10 +260,10 @@ export function BattlePreparation({ onBattleComplete, onStartRealtimeBattle, onC
       </Card>
 
       {/* Attack Button */}
-      <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+      <div className="flex items-center justify-between p-6 bg-gradient-to-r from-red-900/30 to-orange-900/30 border-2 border-red-600/50 rounded-lg">
         <div>
-          <p className="font-semibold">Ready to attack?</p>
-          <p className="text-sm text-muted-foreground">
+          <p className="font-semibold text-xl text-red-300">Ready to attack?</p>
+          <p className="text-sm text-gray-300 font-numbers">
             {selectedTroops.length === 0
               ? 'Select troops to begin the attack'
               : `${getTotalSelectedTroops()} troops selected for battle`}
@@ -271,16 +273,16 @@ export function BattlePreparation({ onBattleComplete, onStartRealtimeBattle, onC
           onClick={handleAttack}
           disabled={selectedTroops.length === 0 || isAttacking}
           size="lg"
-          className="min-w-[120px]"
+          className="min-w-[140px] bg-red-600 hover:bg-red-700 text-white"
         >
           {isAttacking ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
               Starting...
             </>
           ) : (
             <>
-              <Gamepad2 className="mr-2 h-4 w-4" />
+              <Gamepad2 className="mr-2 h-5 w-5" />
               Start Battle
             </>
           )}
