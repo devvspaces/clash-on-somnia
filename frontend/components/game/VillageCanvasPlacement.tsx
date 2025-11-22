@@ -93,56 +93,31 @@ export function VillageCanvasPlacement({
     const app = new PIXI.Application({
       width: CANVAS_SIZE,
       height: CANVAS_SIZE,
-      backgroundColor: 0x87ceeb,
+      backgroundAlpha: 0, // Transparent background
       antialias: true,
     });
 
     appRef.current = app;
     canvasRef.current.appendChild(app.view as HTMLCanvasElement);
 
-    // Load and add background image with cover behavior
-    const loadBackground = async () => {
-      try {
-        const texture = await PIXI.Texture.from(BACKGROUND_IMAGE);
+    // Draw grid lines
+    const gridGraphics = new PIXI.Graphics();
+    gridGraphics.lineStyle(1, 0x000000, 0.1); // Black lines with 10% opacity
 
-        // Check if app is still valid (component might have unmounted)
-        if (!app.stage) {
-          console.log('⚠️ App stage destroyed before background loaded');
-          return;
-        }
+    // Vertical lines
+    for (let x = 0; x <= GRID_SIZE; x++) {
+      gridGraphics.moveTo(x * TILE_SIZE, 0);
+      gridGraphics.lineTo(x * TILE_SIZE, CANVAS_SIZE);
+    }
 
-        const bgSprite = new PIXI.Sprite(texture);
+    // Horizontal lines
+    for (let y = 0; y <= GRID_SIZE; y++) {
+      gridGraphics.moveTo(0, y * TILE_SIZE);
+      gridGraphics.lineTo(CANVAS_SIZE, y * TILE_SIZE);
+    }
 
-        // Calculate scale to cover the canvas (like CSS background-size: cover)
-        const scaleX = CANVAS_SIZE / texture.width;
-        const scaleY = CANVAS_SIZE / texture.height;
-        const scale = Math.max(scaleX, scaleY);
-
-        bgSprite.scale.set(scale);
-
-        // Center the background
-        bgSprite.x = (CANVAS_SIZE - texture.width * scale) / 2;
-        bgSprite.y = (CANVAS_SIZE - texture.height * scale) / 2;
-
-        // Add as first child (background layer)
-        app.stage.addChildAt(bgSprite, 0);
-        console.log('🗺️ Background map loaded');
-      } catch (error) {
-        console.error('❌ Failed to load background:', error);
-
-        // Check if app is still valid before adding fallback
-        if (!app.stage) return;
-
-        // Fallback: draw a simple colored background
-        const gridGraphics = new PIXI.Graphics();
-        gridGraphics.beginFill(0x228b22);
-        gridGraphics.drawRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-        gridGraphics.endFill();
-        app.stage.addChildAt(gridGraphics, 0);
-      }
-    };
-
-    loadBackground();
+    app.stage.addChildAt(gridGraphics, 0);
+    console.log('🗺️ Grid lines drawn');
 
     // Cleanup
     return () => {
@@ -526,7 +501,10 @@ export function VillageCanvasPlacement({
   }, [placementMode, buildings]);
 
   return (
-    <div className="relative flex h-full w-full items-center justify-center">
+    <div
+      className="relative flex h-full w-full items-center justify-center bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: `url(${BACKGROUND_IMAGE})` }}
+    >
       <div
         ref={canvasRef}
         className=""

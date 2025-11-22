@@ -65,56 +65,31 @@ export function VillageCanvas({ buildings, onBuildingClick }: VillageCanvasProps
     const app = new PIXI.Application({
       width: CANVAS_SIZE,
       height: CANVAS_SIZE,
-      backgroundColor: 0x87ceeb, // Sky blue background
+      backgroundAlpha: 0, // Transparent background
       antialias: true,
     });
 
     appRef.current = app;
     canvasRef.current.appendChild(app.view as HTMLCanvasElement);
 
-    // Load and add background image with cover behavior
-    const loadBackground = async () => {
-      try {
-        const texture = await PIXI.Texture.from(BACKGROUND_IMAGE);
+    // Draw grid lines
+    const gridGraphics = new PIXI.Graphics();
+    gridGraphics.lineStyle(1, 0x000000, 0.1); // Black lines with 10% opacity
 
-        // Check if app is still valid (component might have unmounted)
-        if (!app.stage) {
-          console.log('⚠️ App stage destroyed before background loaded');
-          return;
-        }
+    // Vertical lines
+    for (let x = 0; x <= GRID_SIZE; x++) {
+      gridGraphics.moveTo(x * TILE_SIZE, 0);
+      gridGraphics.lineTo(x * TILE_SIZE, CANVAS_SIZE);
+    }
 
-        const bgSprite = new PIXI.Sprite(texture);
+    // Horizontal lines
+    for (let y = 0; y <= GRID_SIZE; y++) {
+      gridGraphics.moveTo(0, y * TILE_SIZE);
+      gridGraphics.lineTo(CANVAS_SIZE, y * TILE_SIZE);
+    }
 
-        // Calculate scale to cover the canvas (like CSS background-size: cover)
-        const scaleX = CANVAS_SIZE / texture.width;
-        const scaleY = CANVAS_SIZE / texture.height;
-        const scale = Math.max(scaleX, scaleY);
-
-        bgSprite.scale.set(scale);
-
-        // Center the background
-        bgSprite.x = (CANVAS_SIZE - texture.width * scale) / 2;
-        bgSprite.y = (CANVAS_SIZE - texture.height * scale) / 2;
-
-        // Add as first child (background layer)
-        app.stage.addChildAt(bgSprite, 0);
-        console.log('🗺️ Background map loaded');
-      } catch (error) {
-        console.error('❌ Failed to load background:', error);
-
-        // Check if app is still valid before adding fallback
-        if (!app.stage) return;
-
-        // Fallback: draw a simple colored background
-        const bgGraphics = new PIXI.Graphics();
-        bgGraphics.beginFill(0x228b22);
-        bgGraphics.drawRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-        bgGraphics.endFill();
-        app.stage.addChildAt(bgGraphics, 0);
-      }
-    };
-
-    loadBackground();
+    app.stage.addChild(gridGraphics);
+    console.log('🗺️ Grid lines drawn');
 
     // Draw decorations (after background, before buildings)
     // DISABLED: Decoration assets not available yet
@@ -134,7 +109,10 @@ export function VillageCanvas({ buildings, onBuildingClick }: VillageCanvasProps
   }, [buildings, onBuildingClick, spritesLoaded, decorations]);
 
   return (
-    <div className="flex items-center justify-center rounded-lg border-4 border-amber-600 bg-green-800 p-4 shadow-2xl">
+    <div
+      className="flex items-center justify-center rounded-lg border-4 border-amber-600 p-4 shadow-2xl bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: `url(${BACKGROUND_IMAGE})` }}
+    >
       <div ref={canvasRef} className="rounded-md shadow-lg" />
     </div>
   );
