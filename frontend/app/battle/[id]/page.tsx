@@ -118,9 +118,7 @@ export default function BattlePage() {
         console.log('Loaded battle session from store');
         setBattleSession(storedBattleSession);
         setIsLoading(false);
-        if (selectedTroops && selectedTroops.length > 0) {
-          setSelectedTroopType(selectedTroops[0].type);
-        }
+        // Don't auto-select troop - user must click to select
       } else {
         // No session in store or session ID mismatch - try to fetch from API
         console.log('Fetching battle session from API...');
@@ -132,9 +130,7 @@ export default function BattlePage() {
           // Store in Zustand for future use
           const { setBattleSession: storeSession } = useBattleStore.getState();
           storeSession(session);
-          if (selectedTroops && selectedTroops.length > 0) {
-            setSelectedTroopType(selectedTroops[0].type);
-          }
+          // Don't auto-select troop - user must click to select
         } catch (error) {
           console.error('Failed to fetch battle session:', error);
           setBattleStatus('Battle session not found or has ended');
@@ -528,7 +524,7 @@ export default function BattlePage() {
     socket.on('connect', () => {
       console.log('WebSocket connected! Joining battle room...');
       setIsConnected(true);
-      setBattleStatus('Click on the map to deploy your selected troop!');
+      setBattleStatus('Select a troop type below, then click on the map to deploy!');
       clearTimeout(connectionTimeout);
 
       // Register event handlers after socket connects
@@ -547,7 +543,7 @@ export default function BattlePage() {
             setBattleStatus('Spectating battle - you cannot deploy troops');
             setIsConnected(true);
           } else {
-            setBattleStatus('Ready! Click on the map to deploy troops!');
+            setBattleStatus('Select a troop type below, then click on the map to deploy!');
           }
         })
         .catch((error) => {
@@ -955,7 +951,10 @@ export default function BattlePage() {
                       key={troop.type}
                       variant={selectedTroopType === troop.type ? 'default' : 'outline'}
                       size="lg"
-                      onClick={() => setSelectedTroopType(troop.type)}
+                      onClick={() => {
+                        setSelectedTroopType(troop.type);
+                        setBattleStatus(`${troop.type} selected! Click on the map to deploy.`);
+                      }}
                       disabled={remaining === 0}
                       className="w-full justify-between"
                     >
