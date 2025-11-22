@@ -45,16 +45,21 @@ export default function RegisterPage() {
   const displayError = validationError || error;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-900 via-purple-900 to-pink-900 p-4">
+    <div
+      className="flex min-h-screen items-center justify-center bg-cover bg-center bg-no-repeat p-4"
+      style={{ backgroundImage: "url('/assets/bg/map001.svg')" }}
+    >
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold">Clash on Somnia</CardTitle>
+          <CardTitle className="text-3xl font-bold" style={{ letterSpacing: '0.15em' }}>
+            Clash on Somnia
+          </CardTitle>
           <CardDescription>Create your village</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <label htmlFor="username" className="text-sm font-medium">
+              <label htmlFor="username" className="text-sm font-medium" style={{ fontFamily: 'KnightWarrior, sans-serif', letterSpacing: '0.05em' }}>
                 Username
               </label>
               <Input
@@ -70,7 +75,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium">
+              <label htmlFor="email" className="text-sm font-medium" style={{ fontFamily: 'KnightWarrior, sans-serif', letterSpacing: '0.05em' }}>
                 Email
               </label>
               <Input
@@ -84,7 +89,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium">
+              <label htmlFor="password" className="text-sm font-medium" style={{ fontFamily: 'KnightWarrior, sans-serif', letterSpacing: '0.05em' }}>
                 Password
               </label>
               <Input
@@ -100,7 +105,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="confirmPassword" className="text-sm font-medium">
+              <label htmlFor="confirmPassword" className="text-sm font-medium" style={{ fontFamily: 'KnightWarrior, sans-serif', letterSpacing: '0.05em' }}>
                 Confirm Password
               </label>
               <Input

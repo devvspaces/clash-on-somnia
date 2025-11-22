@@ -27,16 +27,21 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-900 via-purple-900 to-pink-900 p-4">
+    <div
+      className="flex min-h-screen items-center justify-center bg-cover bg-center bg-no-repeat p-4"
+      style={{ backgroundImage: "url('/assets/bg/map001.svg')" }}
+    >
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold">Clash on Somnia</CardTitle>
+          <CardTitle className="text-3xl font-bold" style={{ letterSpacing: '0.15em' }}>
+            Clash on Somnia
+          </CardTitle>
           <CardDescription>Login to your village</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <label htmlFor="identifier" className="text-sm font-medium">
+              <label htmlFor="identifier" className="text-sm font-medium" style={{ fontFamily: 'KnightWarrior, sans-serif', letterSpacing: '0.05em' }}>
                 Username or Email
               </label>
               <Input
@@ -50,7 +55,7 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium">
+              <label htmlFor="password" className="text-sm font-medium" style={{ fontFamily: 'KnightWarrior, sans-serif', letterSpacing: '0.05em' }}>
                 Password
               </label>
               <Input
