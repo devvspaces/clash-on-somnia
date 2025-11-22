@@ -76,6 +76,13 @@ export function VillageCanvas({ buildings, onBuildingClick }: VillageCanvasProps
     const loadBackground = async () => {
       try {
         const texture = await PIXI.Texture.from(BACKGROUND_IMAGE);
+
+        // Check if app is still valid (component might have unmounted)
+        if (!app.stage) {
+          console.log('⚠️ App stage destroyed before background loaded');
+          return;
+        }
+
         const bgSprite = new PIXI.Sprite(texture);
 
         // Calculate scale to cover the canvas (like CSS background-size: cover)
@@ -94,6 +101,10 @@ export function VillageCanvas({ buildings, onBuildingClick }: VillageCanvasProps
         console.log('🗺️ Background map loaded');
       } catch (error) {
         console.error('❌ Failed to load background:', error);
+
+        // Check if app is still valid before adding fallback
+        if (!app.stage) return;
+
         // Fallback: draw a simple colored background
         const bgGraphics = new PIXI.Graphics();
         bgGraphics.beginFill(0x228b22);
