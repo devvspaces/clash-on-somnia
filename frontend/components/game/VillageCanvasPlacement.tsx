@@ -100,9 +100,16 @@ export function VillageCanvasPlacement({
     appRef.current = app;
     canvasRef.current.appendChild(app.view as HTMLCanvasElement);
 
-    // Draw grid lines
+    // Draw grid lines with semi-transparent background
     const gridGraphics = new PIXI.Graphics();
-    gridGraphics.lineStyle(1, 0x000000, 0.1); // Black lines with 10% opacity
+
+    // Add semi-transparent white background to differentiate play area
+    gridGraphics.beginFill(0xffffff, 0.1); // White with 10% opacity
+    gridGraphics.drawRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    gridGraphics.endFill();
+
+    // Draw grid lines
+    gridGraphics.lineStyle(1, 0x000000, 0.3); // Black lines with 30% opacity
 
     // Vertical lines
     for (let x = 0; x <= GRID_SIZE; x++) {
